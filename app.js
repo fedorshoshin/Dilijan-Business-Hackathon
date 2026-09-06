@@ -5,7 +5,15 @@
   'use strict';
 
   var KEY = 'clean-dilijan-v1';
-  var ME = 'You';
+
+  /* the signed-in account. A demo, so it is fixed rather than a real login. */
+  var USER = {
+    name: 'Narek Avetisyan',
+    id: 'DJ-2026-0418',
+    since: 'March 2026',
+    place: 'Dilijan, Tavush'
+  };
+  var ME = USER.name;
   var CERT_GOAL = 3;          // cleanups needed for the certificate
   var PTS_REPORT = 5;
   var PTS_JOIN = 5;
@@ -223,11 +231,22 @@
           if (!Array.isArray(parsed.pledges)) parsed.pledges = [];
           if (!Array.isArray(parsed.projects)) parsed.projects = [];
           if (typeof parsed.donated !== 'number') parsed.donated = 0;
+          renameMe(parsed);
           return parsed;
         }
       }
     } catch (e) { /* corrupt or blocked storage — fall through to seed */ }
     return seed();
+  }
+
+  /* Early demos saved the player as "You". Now we have a named account, so any
+     older save on this device gets its name swapped over. */
+  function renameMe(data) {
+    data.spots.forEach(function (s) {
+      if (s.reporter === 'You') s.reporter = ME;
+      if (Array.isArray(s.crew)) s.crew = s.crew.map(function (m) { return m === 'You' ? ME : m; });
+      if (Array.isArray(s.replies)) s.replies.forEach(function (r) { if (r.who === 'You') r.who = ME; });
+    });
   }
 
   /* false means the write failed — usually the 5MB store is full, or private mode */
@@ -294,6 +313,7 @@
     renderPins();
     renderCards();
     renderStats();
+    renderAccount();
     renderFund();
     $('pointsValue').textContent = state.points;
     save();
@@ -584,9 +604,14 @@
     $('listSub').textContent = openCount + ' still open · ' + doneCount + ' cleaned';
   }
 
+  /* the cleanups that count toward the certificate: ones you were in the crew for */
+  function myCleanups() {
+    return state.spots.filter(function (s) { return joined(s) && s.status === 'done'; });
+  }
+
   function renderStats() {
     var joinedN = state.spots.filter(function (s) { return joined(s) && s.status !== 'done'; }).length;
-    var cleanedN = state.spots.filter(function (s) { return joined(s) && s.status === 'done'; }).length;
+    var cleanedN = myCleanups().length;
     var reportedN = state.spots.filter(function (s) { return s.reporter === ME; }).length;
 
     $('statJoined').textContent = joinedN;
@@ -601,13 +626,22 @@
     if (cleanedN >= CERT_GOAL) {
       cert.classList.add('earned');
       $('certState').textContent = 'earned';
-      $('certNote').textContent = 'Certificate earned — ' + cleanedN + ' cleanups in Dilijan. Ready to be signed by the municipality.';
+      $('certNote').textContent = 'Certificate earned — ' + cleanedN + ' cleanups in Dilijan. Download it as a PDF, or send the link on.';
+      $('certGet').hidden = false;
     } else {
       cert.classList.remove('earned');
       $('certState').textContent = 'locked';
       $('certNote').textContent = 'Finish ' + (CERT_GOAL - cleanedN) + ' more cleanup' +
         (CERT_GOAL - cleanedN === 1 ? '' : 's') + ' to earn your certificate.';
+      $('certGet').hidden = true;
     }
+  }
+
+  function renderAccount() {
+    $('accName').textContent = USER.name;
+    $('accMeta').textContent = USER.place + ' · member since ' + USER.since;
+    $('accAvatar').textContent = initials(USER.name);
+    $('topAvatar').textContent = initials(USER.name);
   }
 
   /* ---------- spot detail sheet ---------- */
@@ -775,6 +809,7 @@
   function markCleaned(id, afterPhoto) {
     var spot = state.spots.find(function (s) { return s.id === id; });
     if (!spot || spot.status === 'done') return;
+    var wasEarned = myCleanups().length >= CERT_GOAL;
     spot.status = 'done';
     spot.when = 'just now';
     spot.after = afterPhoto || null;
@@ -789,14 +824,211 @@
 
     addPoints(PTS_CLEAN);
     render();
-    openSpot(id);
 
-    var msg;
-    if (!stored) msg = 'This device is full — the change may vanish on refresh';
-    else if (dropped) msg = 'Marked clean, but this device is full — after photo not kept';
-    else msg = 'Spot marked clean · +' + PTS_CLEAN + ' pts';
-    toast(msg);
+    var justEarned = myCleanups().length >= CERT_GOAL && !wasEarned;
+    if (justEarned) openCert(true);   // the third cleanup: show the prize
+    else openSpot(id);
+
+    // a warning always shows; the routine "well done" is skipped when the
+    // certificate sheet is up, so the toast cannot sit over its download button
+    if (!stored) toast('This device is full — the change may vanish on refresh');
+    else if (dropped) toast('Marked clean, but this device is full — after photo not kept');
+    else if (!justEarned) toast('Spot marked clean · +' + PTS_CLEAN + ' pts');
   }
+
+  /* ---------- the certificate ----------
+     A PDF file is really just text: some drawing commands, plus a table saying
+     how many bytes into the file each part starts. So we write one by hand here
+     instead of shipping a whole PDF library the phone would have to download. */
+
+  /* how wide each character is in Helvetica, per 1000 units of type size.
+     Needed to centre a line: we have to know how long it will be. */
+  var W_REG = [278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,
+    556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,
+    1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,
+    667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,
+    333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,
+    556,556,333,500,278,556,500,722,500,500,500,334,260,334,584];
+  var W_BOLD = [278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,
+    556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,
+    975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,
+    667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,
+    333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,
+    611,611,389,556,333,611,556,778,556,556,500,389,280,389,584];
+
+  var PAGE_W = 842, PAGE_H = 595;   // A4 on its side, measured in points
+  var PDF_INK = '0.106 0.165 0.129';
+  var PDF_GREEN = '0.122 0.42 0.29';
+  var PDF_MUTED = '0.42 0.44 0.42';
+
+  function pdfWidth(text, size, bold) {
+    var table = bold ? W_BOLD : W_REG, total = 0;
+    for (var i = 0; i < text.length; i++) {
+      var c = text.charCodeAt(i);
+      total += (c >= 32 && c <= 126) ? table[c - 32] : 556;
+    }
+    return total * size / 1000;
+  }
+
+  /* PDF text is wrapped in ( ), so those characters have to be escaped.
+     Anything the built-in font cannot draw (Armenian letters, emoji) becomes "?". */
+  function pdfEscape(s) {
+    var out = '';
+    for (var i = 0; i < s.length; i++) {
+      var ch = s.charAt(i), c = s.charCodeAt(i);
+      if (c === 40 || c === 41 || c === 92) out += '\\' + ch;
+      else if (c >= 32 && c <= 126) out += ch;
+      else out += '?';
+    }
+    return out;
+  }
+
+  function pdfLine(text, size, bold, x, y, colour) {
+    return 'BT /' + (bold ? 'FB' : 'FR') + ' ' + size + ' Tf ' + colour + ' rg ' +
+           x.toFixed(1) + ' ' + y.toFixed(1) + ' Td (' + pdfEscape(text) + ') Tj ET\n';
+  }
+
+  function pdfCentred(text, size, bold, y, colour) {
+    return pdfLine(text, size, bold, (PAGE_W - pdfWidth(text, size, bold)) / 2, y, colour);
+  }
+
+  function buildCertPdf(d) {
+    var c = '';
+
+    // double border
+    c += 'q ' + PDF_GREEN + ' RG 2 w 24 24 794 547 re S 0.6 w 34 34 774 527 re S Q\n';
+
+    c += pdfCentred('CLEAN DILIJAN', 11, true, 505, PDF_GREEN);
+    c += pdfCentred('Certificate of Recognition', 30, true, 460, PDF_INK);
+    c += 'q ' + PDF_GREEN + ' RG 2 w 391 442 m 451 442 l S Q\n';
+
+    c += pdfCentred('This certifies that', 13, false, 405, PDF_MUTED);
+    c += pdfCentred(d.name, 38, true, 355, PDF_INK);
+    c += 'q 0.82 0.80 0.75 RG 0.8 w 211 335 m 631 335 l S Q\n';
+    c += pdfCentred('is recognised as a', 13, false, 308, PDF_MUTED);
+    c += pdfCentred('Verified Eco-Activist', 20, true, 278, PDF_GREEN);
+
+    c += pdfCentred('for reporting polluted places in Dilijan and completing ' +
+                    d.cleanups + ' community ' + (d.cleanups === 1 ? 'cleanup' : 'cleanups') + ',', 12, false, 242, PDF_INK);
+    c += pdfCentred('each one confirmed with before-and-after photographs.', 12, false, 224, PDF_INK);
+
+    if (d.titles.length) {
+      c += pdfCentred('CLEANUPS COMPLETED', 9, true, 192, PDF_MUTED);
+      d.titles.slice(0, 4).forEach(function (t, i) {
+        c += pdfCentred(t, 10, false, 175 - i * 14, PDF_INK);
+      });
+    }
+
+    c += pdfLine('Issued ' + d.date, 10, false, 60, 100, PDF_MUTED);
+    c += pdfLine('Member ID ' + d.id, 10, false, 60, 84, PDF_MUTED);
+    c += pdfLine(d.points + ' eco-points', 10, false, 60, 68, PDF_MUTED);
+
+    c += 'q 0.82 0.80 0.75 RG 0.8 w 562 96 m 782 96 l S Q\n';
+    c += pdfLine('Clean Dilijan community platform', 10, false, 782 - pdfWidth('Clean Dilijan community platform', 10, false), 80, PDF_MUTED);
+
+    c += pdfCentred('Demonstration certificate - issued by the Clean Dilijan community, pending municipal endorsement.',
+                    9, false, 44, PDF_MUTED);
+
+    var objs = [];
+    objs[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+    objs[2] = '<< /Type /Pages /Kids [3 0 R] /Count 1 >>';
+    objs[3] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + PAGE_W + ' ' + PAGE_H + ']' +
+              ' /Resources << /Font << /FR 5 0 R /FB 6 0 R >> >> /Contents 4 0 R >>';
+    objs[4] = '<< /Length ' + c.length + ' >>\nstream\n' + c + 'endstream';
+    objs[5] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
+    objs[6] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
+
+    var out = '%PDF-1.4\n', offsets = [], i;
+    for (i = 1; i <= 6; i++) {
+      offsets[i] = out.length;
+      out += i + ' 0 obj\n' + objs[i] + '\nendobj\n';
+    }
+    var xref = out.length;
+    out += 'xref\n0 7\n0000000000 65535 f \n';
+    for (i = 1; i <= 6; i++) out += ('0000000000' + offsets[i]).slice(-10) + ' 00000 n \n';
+    out += 'trailer\n<< /Size 7 /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF';
+
+    // everything above is plain ASCII, so one character is exactly one byte
+    var bytes = new Uint8Array(out.length);
+    for (i = 0; i < out.length; i++) bytes[i] = out.charCodeAt(i) & 0xFF;
+    return new Blob([bytes], { type: 'application/pdf' });
+  }
+
+  var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'];
+
+  function certData() {
+    var done = myCleanups();
+    var now = new Date();
+    return {
+      name: USER.name,
+      id: USER.id,
+      points: state.points,
+      cleanups: done.length,
+      titles: done.map(function (s) { return s.title; }),
+      date: now.getDate() + ' ' + MONTHS[now.getMonth()] + ' ' + now.getFullYear()
+    };
+  }
+
+  function downloadCert() {
+    var d = certData();
+    var url = URL.createObjectURL(buildCertPdf(d));
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'Clean-Dilijan-Certificate-' + d.name.replace(/\s+/g, '-') + '.pdf';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    toast('Certificate downloaded as a PDF');
+  }
+
+  function openCert(justEarned) {
+    var d = certData();
+    var html = '';
+
+    html += '<h2 id="sheetTitle">' + (justEarned ? 'Certificate unlocked' : 'Your certificate') + '</h2>';
+    html += '<p class="sheet-sub">' + plural(d.cleanups, 'cleanup', 'cleanups') +
+            ' finished with photo proof. Download it as a PDF and attach it to a ' +
+            'university or job application.</p>';
+
+    html += '<div class="certdoc">' +
+              '<p class="cd-eyebrow">Clean Dilijan</p>' +
+              '<h3>Certificate of Recognition</h3>' +
+              '<div class="cd-rule"></div>' +
+              '<p class="cd-label">This certifies that</p>' +
+              '<p class="cd-name">' + escapeHtml(d.name) + '</p>' +
+              '<p class="cd-label">is recognised as a</p>' +
+              '<p class="cd-role">Verified Eco-Activist</p>' +
+              '<p class="cd-body">for reporting polluted places in Dilijan and completing ' +
+                plural(d.cleanups, 'community cleanup', 'community cleanups') +
+                ', each one confirmed with before-and-after photographs.</p>';
+
+    if (d.titles.length) {
+      html += '<ul class="cd-list">';
+      d.titles.slice(0, 4).forEach(function (t) {
+        html += '<li>' + escapeHtml(t) + '</li>';
+      });
+      html += '</ul>';
+    }
+
+    html += '<p class="cd-foot">Issued ' + escapeHtml(d.date) + ' · Member ID ' +
+              escapeHtml(d.id) + ' · ' + d.points + ' eco-points<br>' +
+              'Demonstration certificate, pending municipal endorsement.</p>' +
+            '</div>';
+
+    html += '<div class="sheet-actions">' +
+              '<button class="btn btn-primary btn-block" id="certPdf" type="button">Download PDF</button>' +
+              '<button class="btn btn-ghost btn-block" id="certDone" type="button">Close</button>' +
+            '</div>';
+
+    $('sheetBody').innerHTML = html;
+    $('certPdf').addEventListener('click', downloadCert);
+    $('certDone').addEventListener('click', function () { hide($('sheetBack')); });
+    show($('sheetBack'));
+  }
+
+  $('certGet').addEventListener('click', function () { openCert(false); });
 
   /* ---------- photos ----------
      A phone photo is far too big for localStorage (~5MB for everything), so we

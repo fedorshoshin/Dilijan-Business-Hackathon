@@ -18,8 +18,11 @@
         <small>Մաքուր Դիլիջան</small>
       </span>
     </div>
-    <div class="points" id="pointsChip" title="Your eco-points">
-      <span id="pointsValue">0</span> pts
+    <div class="topbar-right">
+      <div class="points" id="pointsChip" title="Your eco-points">
+        <span id="pointsValue">0</span> pts
+      </div>
+      <span class="avatar avatar-sm" id="topAvatar" aria-hidden="true"></span>
     </div>
   </div>
 </header>
@@ -207,6 +210,14 @@
       <p class="sub">Join and finish cleanups to get certified.</p>
     </div>
 
+    <div class="account">
+      <span class="avatar" id="accAvatar" aria-hidden="true"></span>
+      <span class="account-text">
+        <strong id="accName">—</strong>
+        <small id="accMeta">—</small>
+      </span>
+    </div>
+
     <div class="stats">
       <div class="stat"><strong id="statJoined">0</strong><span>crews joined</span></div>
       <div class="stat"><strong id="statCleaned">0</strong><span>spots cleaned</span></div>
@@ -222,6 +233,7 @@
         <span id="certFill"></span>
       </div>
       <p class="cert-note" id="certNote">Finish 3 cleanups to earn your certificate.</p>
+      <button class="btn btn-primary btn-block" id="certGet" type="button" hidden>View certificate</button>
     </div>
   </section>
 
