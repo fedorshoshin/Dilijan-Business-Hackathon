@@ -4,7 +4,9 @@
 (function () {
   'use strict';
 
-  var KEY = 'clean-dilijan-v1';
+  /* bumped to v2 when the demo gained a starting history — an old save on a
+     device would otherwise hide the new starting point */
+  var KEY = 'clean-dilijan-v2';
 
   /* the signed-in account. A demo, so it is fixed rather than a real login. */
   var USER = {
@@ -14,15 +16,17 @@
     place: 'Dilijan, Tavush'
   };
   var ME = USER.name;
-  var CERT_GOAL = 2;          // cleanups needed for the certificate
+  var CERT_GOAL = 3;          // cleanups needed for the certificate
   var PTS_REPORT = 5;
   var PTS_JOIN = 5;
   var PTS_CLEAN = 20;
 
-  /* ---------- seed data: plausible spots around Dilijan ---------- */
+  /* ---------- seed data: plausible spots around Dilijan ----------
+     The account starts with two cleanups already behind it, so one more
+     finishes the certificate. Points match that history: 2 joins + 2 cleanups. */
   function seed() {
     return {
-      points: 0,
+      points: 2 * PTS_JOIN + 2 * PTS_CLEAN,
       pledges: [],
       projects: [],
       donated: 0,
@@ -77,7 +81,7 @@
           x: 41, y: 47,
           reporter: 'Mariam G.',
           when: '3 weeks ago',
-          crew: ['Mariam G.', 'Tigran V.', 'Sona B.', 'Aram K.'],
+          crew: ['Mariam G.', 'Tigran V.', 'Sona B.', ME],
           replies: [
             { who: 'Tigran V.', text: 'Done — 14 bags collected, municipality truck took them same day.' }
           ]
@@ -87,13 +91,14 @@
           title: 'Tourist litter, Parz Lake trail',
           desc: 'Cans and picnic waste along the last kilometre of the trail up to the lake.',
           kind: 'cleanup',
-          status: 'crew',
+          status: 'done',
           x: 86, y: 17,
           reporter: 'Sona B.',
-          when: '4 days ago',
-          crew: ['Sona B.'],
+          when: '9 days ago',
+          crew: ['Sona B.', ME, 'Lilit A.'],
           replies: [
-            { who: 'Sona B.', text: 'Worst right after weekends. Best to go Monday morning.' }
+            { who: 'Sona B.', text: 'Worst right after weekends. Best to go Monday morning.' },
+            { who: ME, text: 'Went up Monday with Lilit — 9 bags off the last kilometre. Trail is clear.' }
           ]
         },
         {
@@ -231,22 +236,11 @@
           if (!Array.isArray(parsed.pledges)) parsed.pledges = [];
           if (!Array.isArray(parsed.projects)) parsed.projects = [];
           if (typeof parsed.donated !== 'number') parsed.donated = 0;
-          renameMe(parsed);
           return parsed;
         }
       }
     } catch (e) { /* corrupt or blocked storage — fall through to seed */ }
     return seed();
-  }
-
-  /* Early demos saved the player as "You". Now we have a named account, so any
-     older save on this device gets its name swapped over. */
-  function renameMe(data) {
-    data.spots.forEach(function (s) {
-      if (s.reporter === 'You') s.reporter = ME;
-      if (Array.isArray(s.crew)) s.crew = s.crew.map(function (m) { return m === 'You' ? ME : m; });
-      if (Array.isArray(s.replies)) s.replies.forEach(function (r) { if (r.who === 'You') r.who = ME; });
-    });
   }
 
   /* false means the write failed — usually the 5MB store is full, or private mode */
@@ -646,6 +640,21 @@
   }
 
   /* ---------- spot detail sheet ---------- */
+  function shotOf(src, placeholder, alt, afterStyle) {
+    return isPhoto(src)
+      ? '<img class="photo" src="' + src + '" alt="' + escapeHtml(alt) + '">'
+      : '<div class="photo' + (afterStyle ? ' after' : '') + '">' + placeholder + '</div>';
+  }
+
+  function photoPair(spot) {
+    return '<div class="photo-pair">' +
+             '<figure>' + shotOf(spot.photo, 'No photo', 'Before cleaning: ' + spot.title, false) +
+               '<figcaption>Before</figcaption></figure>' +
+             '<figure>' + shotOf(spot.after, 'No photo', 'After cleaning: ' + spot.title, true) +
+               '<figcaption>After</figcaption></figure>' +
+           '</div>';
+  }
+
   var currentId = null;
 
   function openSpot(id) {
@@ -661,19 +670,8 @@
     html += '<p class="sheet-sub">Reported by ' + escapeHtml(spot.reporter) + ' · ' + escapeHtml(spot.when) + '</p>';
     html += '<p class="sheet-desc">' + escapeHtml(spot.desc) + '</p>';
 
-    function shotOf(src, placeholder, alt, afterStyle) {
-      return isPhoto(src)
-        ? '<img class="photo" src="' + src + '" alt="' + escapeHtml(alt) + '">'
-        : '<div class="photo' + (afterStyle ? ' after' : '') + '">' + placeholder + '</div>';
-    }
-
     if (spot.status === 'done') {
-      html += '<div class="photo-pair">' +
-                '<figure>' + shotOf(spot.photo, 'No photo', 'Before cleaning: ' + spot.title, false) +
-                  '<figcaption>Before</figcaption></figure>' +
-                '<figure>' + shotOf(spot.after, 'No photo', 'After cleaning: ' + spot.title, true) +
-                  '<figcaption>After</figcaption></figure>' +
-              '</div>';
+      html += photoPair(spot);
     } else {
       html += shotOf(spot.photo, 'No photo on this report', 'Photo of ' + spot.title, false);
     }
@@ -827,7 +825,7 @@
     render();
 
     var justEarned = myCleanups().length >= CERT_GOAL && !wasEarned;
-    if (justEarned) openCert(true);   // the third cleanup: show the prize
+    if (justEarned) openCert(spot);   // the cleanup that finished it: show the prize
     else openSpot(id);
 
     // a warning always shows; the routine "well done" is skipped when the
@@ -911,7 +909,7 @@
 
     c += pdfCentred('for reporting polluted places in Dilijan and completing ' +
                     d.cleanups + ' community ' + (d.cleanups === 1 ? 'cleanup' : 'cleanups') + ',', 12, false, 242, PDF_INK);
-    c += pdfCentred('each one confirmed with before-and-after photographs.', 12, false, 224, PDF_INK);
+    c += pdfCentred('each one carried out and confirmed with a local volunteer crew.', 12, false, 224, PDF_INK);
 
     if (d.titles.length) {
       c += pdfCentred('CLEANUPS COMPLETED', 9, true, 192, PDF_MUTED);
@@ -984,14 +982,22 @@
     toast('Certificate downloaded as a PDF');
   }
 
-  function openCert(justEarned) {
+  /* earnedBy: the spot that just tipped you over the line, if any. Its
+     before-and-after pair goes on top — the proof and the prize on one screen,
+     so finishing a cleanup never hides the photos you just took. */
+  function openCert(earnedBy) {
     var d = certData();
     var html = '';
 
-    html += '<h2 id="sheetTitle">' + (justEarned ? 'Certificate unlocked' : 'Your certificate') + '</h2>';
+    html += '<h2 id="sheetTitle">' + (earnedBy ? 'Certificate unlocked' : 'Your certificate') + '</h2>';
     html += '<p class="sheet-sub">' + plural(d.cleanups, 'cleanup', 'cleanups') +
-            ' finished with photo proof. Download it as a PDF and attach it to a ' +
+            ' finished with a local crew. Download it as a PDF and attach it to a ' +
             'university or job application.</p>';
+
+    if (earnedBy && (isPhoto(earnedBy.photo) || isPhoto(earnedBy.after))) {
+      html += '<p class="cert-shots-head">' + escapeHtml(earnedBy.title) + '</p>';
+      html += photoPair(earnedBy);
+    }
 
     html += '<div class="certdoc">' +
               '<p class="cd-eyebrow">Clean Dilijan</p>' +
@@ -1003,7 +1009,7 @@
               '<p class="cd-role">Verified Eco-Activist</p>' +
               '<p class="cd-body">for reporting polluted places in Dilijan and completing ' +
                 plural(d.cleanups, 'community cleanup', 'community cleanups') +
-                ', each one confirmed with before-and-after photographs.</p>';
+                ', each one carried out and confirmed with a local volunteer crew.</p>';
 
     if (d.titles.length) {
       html += '<ul class="cd-list">';
@@ -1029,7 +1035,7 @@
     show($('sheetBack'));
   }
 
-  $('certGet').addEventListener('click', function () { openCert(false); });
+  $('certGet').addEventListener('click', function () { openCert(null); });
 
   /* ---------- photos ----------
      A phone photo is far too big for localStorage (~5MB for everything), so we

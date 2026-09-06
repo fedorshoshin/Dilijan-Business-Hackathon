@@ -478,6 +478,13 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 .cert-note { font-size: 14px; color: var(--muted); }
 #certGet { margin-top: 12px; }
 
+.cert-shots-head {
+  margin-top: 16px;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--muted);
+}
+
 /* the on-screen certificate — same layout as the PDF it downloads */
 .certdoc {
   margin: 16px 0;
