@@ -230,9 +230,14 @@
     return seed();
   }
 
+  /* false means the write failed — usually the 5MB store is full, or private mode */
   function save() {
-    try { localStorage.setItem(KEY, JSON.stringify(state)); }
-    catch (e) { /* private mode: app still works for this session */ }
+    try {
+      localStorage.setItem(KEY, JSON.stringify(state));
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 
   /* ---------- helpers ---------- */
@@ -621,13 +626,14 @@
     html += '<p class="sheet-sub">Reported by ' + escapeHtml(spot.reporter) + ' · ' + escapeHtml(spot.when) + '</p>';
     html += '<p class="sheet-desc">' + escapeHtml(spot.desc) + '</p>';
 
+    var shot = isPhoto(spot.photo)
+      ? '<img class="photo" src="' + spot.photo + '" alt="Photo of ' + escapeHtml(spot.title) + '">'
+      : '<div class="photo">No photo on this report</div>';
+
     if (spot.status === 'done') {
-      html += '<div class="photo-pair">' +
-                '<div class="photo">Before</div>' +
-                '<div class="photo after">After</div>' +
-              '</div>';
+      html += '<div class="photo-pair">' + shot + '<div class="photo after">After</div></div>';
     } else {
-      html += '<div class="photo">Photo from the report</div>';
+      html += shot;
     }
 
     if (spot.kind === 'official') {
@@ -725,9 +731,85 @@
     toast('Spot marked clean · +' + PTS_CLEAN + ' pts');
   }
 
+  /* ---------- photos ----------
+     A phone photo is far too big for localStorage (~5MB for everything), so we
+     redraw it smaller on a canvas and keep a compressed JPEG instead. */
+  var PHOTO_MAX_W = 900;
+  var PHOTO_QUALITY = 0.7;
+
+  function shrinkPhoto(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onerror = function () { reject(new Error('Could not read that file.')); };
+      reader.onload = function () {
+        var img = new Image();
+        img.onerror = function () { reject(new Error('That file is not an image we can open.')); };
+        img.onload = function () {
+          var w = img.naturalWidth, h = img.naturalHeight;
+          if (!w || !h) { reject(new Error('That image looks empty.')); return; }
+          if (w > PHOTO_MAX_W) { h = Math.round(h * PHOTO_MAX_W / w); w = PHOTO_MAX_W; }
+
+          var canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          try {
+            resolve(canvas.toDataURL('image/jpeg', PHOTO_QUALITY));
+          } catch (e) {
+            reject(new Error('Could not process that image.'));
+          }
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function isPhoto(v) { return typeof v === 'string' && v.indexOf('data:image/') === 0; }
+
+  function kb(dataUrl) { return Math.round(dataUrl.length * 0.75 / 1024); }
+
   /* ---------- report flow ---------- */
   var placing = false;
   var pending = null;
+  var pendingPhoto = null;
+
+  function clearPhoto() {
+    pendingPhoto = null;
+    $('fPhoto').value = '';
+    $('photoPreview').hidden = true;
+    $('photoImg').removeAttribute('src');
+    $('photoInfo').textContent = '';
+  }
+
+  $('fPhoto').addEventListener('change', function () {
+    var file = this.files && this.files[0];
+    if (!file) { clearPhoto(); return; }
+
+    var err = $('formErr');
+    if (file.type && file.type.indexOf('image/') !== 0) {
+      err.textContent = 'That file is not a photo. Pick an image.';
+      err.hidden = false;
+      clearPhoto();
+      return;
+    }
+
+    $('photoInfo').textContent = 'Shrinking…';
+    $('photoPreview').hidden = false;
+
+    shrinkPhoto(file).then(function (dataUrl) {
+      pendingPhoto = dataUrl;
+      $('photoImg').src = dataUrl;
+      $('photoInfo').textContent = 'Ready · about ' + kb(dataUrl) + ' KB';
+      err.hidden = true;
+    }).catch(function (e) {
+      err.textContent = e.message;
+      err.hidden = false;
+      clearPhoto();
+    });
+  });
+
+  $('photoClear').addEventListener('click', clearPhoto);
 
   function startPlacing() {
     placing = true;
@@ -757,6 +839,7 @@
     };
     stopPlacing();
     $('reportForm').reset();
+    clearPhoto();
     $('formErr').hidden = true;
     show($('formBack'));
     setTimeout(function () { $('fTitle').focus(); }, 60);
@@ -778,7 +861,7 @@
     var kind = document.querySelector('input[name="kind"]:checked').value;
     var id = 'u' + Date.now();
 
-    state.spots.unshift({
+    var spot = {
       id: id,
       title: title,
       desc: desc,
@@ -789,14 +872,31 @@
       reporter: ME,
       when: 'just now',
       crew: [],
-      replies: []
-    });
+      replies: [],
+      photo: pendingPhoto
+    };
+    state.spots.unshift(spot);
+
+    // photos are the one thing big enough to overflow this device's store
+    var stored = save();
+    var dropped = false;
+    if (!stored && spot.photo) {
+      spot.photo = null;
+      stored = save();
+      dropped = stored;
+    }
 
     newestId = id;
     addPoints(PTS_REPORT);
+    clearPhoto();
     hide($('formBack'));
     render();
-    toast('Report posted · +' + PTS_REPORT + ' pts');
+
+    var msg;
+    if (!stored) msg = 'This device is full — the report may vanish on refresh';
+    else if (dropped) msg = 'Report saved, but this device is full — photo not kept';
+    else msg = 'Report posted · +' + PTS_REPORT + ' pts';
+    toast(msg);
     setTimeout(function () { newestId = null; renderPins(); }, 2200);
   });
 

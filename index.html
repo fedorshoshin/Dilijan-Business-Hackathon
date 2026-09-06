@@ -283,6 +283,18 @@
         <span>What is there?</span>
         <textarea id="fDesc" rows="3" maxlength="240" required placeholder="e.g. Plastic bottles and construction bags dumped on the bank."></textarea>
       </label>
+      <label class="field">
+        <span>Photo <small class="opt">(optional)</small></span>
+        <input id="fPhoto" type="file" accept="image/*" capture="environment">
+      </label>
+      <div class="shot-preview" id="photoPreview" hidden>
+        <img id="photoImg" alt="The photo you chose for this report">
+        <div class="shot-row">
+          <span class="shot-info" id="photoInfo"></span>
+          <button class="linkbtn" id="photoClear" type="button">Remove photo</button>
+        </div>
+      </div>
+
       <fieldset class="field">
         <legend>Who can fix it?</legend>
         <div class="choices">

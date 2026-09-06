@@ -507,6 +507,16 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
   text-align: center;
   padding: 8px;
 }
+/* the .photo box is a centred placeholder; a real image needs plain block sizing */
+img.photo {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  padding: 0;
+}
+
 .photo-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
 .photo-pair .photo { margin-top: 0; }
 .photo.after { background: repeating-linear-gradient(45deg, #E8F1EA, #E8F1EA 12px, #DCEAE1 12px, #DCEAE1 24px); color: var(--green-dk); }
@@ -585,6 +595,52 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
   resize: vertical;
 }
 fieldset.field { border: 0; margin-inline: 0; padding: 0; }
+
+.opt { font-size: 14px; font-weight: 400; color: var(--muted); }
+
+.field input[type="file"] {
+  width: 100%;
+  font: inherit;
+  font-size: 14px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px dashed #C6CFC8;
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+}
+.field input[type="file"]::file-selector-button {
+  font: inherit;
+  font-weight: 650;
+  margin-right: 12px;
+  padding: 8px 12px;
+  min-height: 32px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--green-sf);
+  color: var(--green-dk);
+  cursor: pointer;
+}
+
+.shot-preview { margin-top: 12px; }
+.shot-preview img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: var(--bg);
+}
+.shot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+}
+.shot-info { font-size: 14px; color: var(--muted); }
 .choices { display: grid; gap: 8px; }
 .choice {
   display: flex;
