@@ -626,14 +626,21 @@
     html += '<p class="sheet-sub">Reported by ' + escapeHtml(spot.reporter) + ' · ' + escapeHtml(spot.when) + '</p>';
     html += '<p class="sheet-desc">' + escapeHtml(spot.desc) + '</p>';
 
-    var shot = isPhoto(spot.photo)
-      ? '<img class="photo" src="' + spot.photo + '" alt="Photo of ' + escapeHtml(spot.title) + '">'
-      : '<div class="photo">No photo on this report</div>';
+    function shotOf(src, placeholder, alt, afterStyle) {
+      return isPhoto(src)
+        ? '<img class="photo" src="' + src + '" alt="' + escapeHtml(alt) + '">'
+        : '<div class="photo' + (afterStyle ? ' after' : '') + '">' + placeholder + '</div>';
+    }
 
     if (spot.status === 'done') {
-      html += '<div class="photo-pair">' + shot + '<div class="photo after">After</div></div>';
+      html += '<div class="photo-pair">' +
+                '<figure>' + shotOf(spot.photo, 'No photo', 'Before cleaning: ' + spot.title, false) +
+                  '<figcaption>Before</figcaption></figure>' +
+                '<figure>' + shotOf(spot.after, 'No photo', 'After cleaning: ' + spot.title, true) +
+                  '<figcaption>After</figcaption></figure>' +
+              '</div>';
     } else {
-      html += shot;
+      html += shotOf(spot.photo, 'No photo on this report', 'Photo of ' + spot.title, false);
     }
 
     if (spot.kind === 'official') {
@@ -687,7 +694,7 @@
     if (joinBtn) joinBtn.addEventListener('click', function () { joinCrew(spot.id); });
 
     var doneBtn = $('doneBtn');
-    if (doneBtn) doneBtn.addEventListener('click', function () { markCleaned(spot.id); });
+    if (doneBtn) doneBtn.addEventListener('click', function () { openFinish(spot.id); });
 
     $('replySend').addEventListener('click', function () { sendReply(spot.id); });
     $('replyInput').addEventListener('keydown', function (e) {
@@ -720,15 +727,75 @@
     toast('Reply posted');
   }
 
-  function markCleaned(id) {
+  /* Step between "we finished" and the spot turning green: ask for proof. */
+  function openFinish(id) {
+    var spot = state.spots.find(function (s) { return s.id === id; });
+    if (!spot) return;
+
+    var html = '';
+    html += '<h2 id="sheetTitle">Mark as cleaned</h2>';
+    html += '<p class="sheet-sub">' + escapeHtml(spot.title) + '</p>';
+    html += '<p class="sheet-desc">Add an "after" photo. A picture of the clean spot ' +
+            'is what turns your word into proof — and it is what makes the certificate ' +
+            'worth showing to a school or an employer.</p>';
+
+    if (isPhoto(spot.photo)) {
+      html += '<div class="crew"><h3>The photo from the report</h3>' +
+              '<img class="photo" src="' + spot.photo + '" alt="Photo from the original report"></div>';
+    }
+
+    html += '<label class="field"><span>After photo <small class="opt">(optional)</small></span>' +
+            '<input id="aPhoto" type="file" accept="image/*" capture="environment"></label>';
+    html += '<div class="shot-preview" id="afterPreview" hidden>' +
+              '<img id="afterImg" alt="The after photo you chose">' +
+              '<div class="shot-row"><span class="shot-info" id="afterInfo"></span>' +
+              '<button class="linkbtn" id="afterClear" type="button">Remove photo</button></div>' +
+            '</div>';
+    html += '<p class="err" id="afterErr" hidden></p>';
+
+    html += '<div class="sheet-actions">' +
+              '<button class="btn btn-primary btn-block" id="finishConfirm" type="button">Confirm cleanup</button>' +
+              '<button class="btn btn-ghost btn-block" id="finishCancel" type="button">Cancel</button>' +
+            '</div>';
+
+    $('sheetBody').innerHTML = html;
+
+    var afterPhoto = null;
+    photoPicker({
+      input: 'aPhoto', preview: 'afterPreview', img: 'afterImg',
+      info: 'afterInfo', err: 'afterErr', clear: 'afterClear'
+    }, function (dataUrl) { afterPhoto = dataUrl; });
+
+    $('finishCancel').addEventListener('click', function () { openSpot(id); });
+    $('finishConfirm').addEventListener('click', function () { markCleaned(id, afterPhoto); });
+
+    show($('sheetBack'));
+  }
+
+  function markCleaned(id, afterPhoto) {
     var spot = state.spots.find(function (s) { return s.id === id; });
     if (!spot || spot.status === 'done') return;
     spot.status = 'done';
     spot.when = 'just now';
+    spot.after = afterPhoto || null;
+
+    var stored = save();
+    var dropped = false;
+    if (!stored && spot.after) {
+      spot.after = null;
+      stored = save();
+      dropped = stored;
+    }
+
     addPoints(PTS_CLEAN);
     render();
     openSpot(id);
-    toast('Spot marked clean · +' + PTS_CLEAN + ' pts');
+
+    var msg;
+    if (!stored) msg = 'This device is full — the change may vanish on refresh';
+    else if (dropped) msg = 'Marked clean, but this device is full — after photo not kept';
+    else msg = 'Spot marked clean · +' + PTS_CLEAN + ' pts';
+    toast(msg);
   }
 
   /* ---------- photos ----------
@@ -769,47 +836,59 @@
 
   function kb(dataUrl) { return Math.round(dataUrl.length * 0.75 / 1024); }
 
+  /* Wires up one file input + preview. Used by both the report form and the
+     "mark as cleaned" sheet. Returns a function that resets it. */
+  function photoPicker(ids, onReady) {
+    var input = $(ids.input), preview = $(ids.preview),
+        img = $(ids.img), info = $(ids.info), err = $(ids.err);
+
+    function clear() {
+      onReady(null);
+      input.value = '';
+      preview.hidden = true;
+      img.removeAttribute('src');
+      info.textContent = '';
+    }
+
+    input.addEventListener('change', function () {
+      var file = input.files && input.files[0];
+      if (!file) { clear(); return; }
+
+      if (file.type && file.type.indexOf('image/') !== 0) {
+        err.textContent = 'That file is not a photo. Pick an image.';
+        err.hidden = false;
+        clear();
+        return;
+      }
+
+      info.textContent = 'Shrinking…';
+      preview.hidden = false;
+
+      shrinkPhoto(file).then(function (dataUrl) {
+        onReady(dataUrl);
+        img.src = dataUrl;
+        info.textContent = 'Ready · about ' + kb(dataUrl) + ' KB';
+        err.hidden = true;
+      }).catch(function (e) {
+        err.textContent = e.message;
+        err.hidden = false;
+        clear();
+      });
+    });
+
+    $(ids.clear).addEventListener('click', clear);
+    return clear;
+  }
+
   /* ---------- report flow ---------- */
   var placing = false;
   var pending = null;
   var pendingPhoto = null;
 
-  function clearPhoto() {
-    pendingPhoto = null;
-    $('fPhoto').value = '';
-    $('photoPreview').hidden = true;
-    $('photoImg').removeAttribute('src');
-    $('photoInfo').textContent = '';
-  }
-
-  $('fPhoto').addEventListener('change', function () {
-    var file = this.files && this.files[0];
-    if (!file) { clearPhoto(); return; }
-
-    var err = $('formErr');
-    if (file.type && file.type.indexOf('image/') !== 0) {
-      err.textContent = 'That file is not a photo. Pick an image.';
-      err.hidden = false;
-      clearPhoto();
-      return;
-    }
-
-    $('photoInfo').textContent = 'Shrinking…';
-    $('photoPreview').hidden = false;
-
-    shrinkPhoto(file).then(function (dataUrl) {
-      pendingPhoto = dataUrl;
-      $('photoImg').src = dataUrl;
-      $('photoInfo').textContent = 'Ready · about ' + kb(dataUrl) + ' KB';
-      err.hidden = true;
-    }).catch(function (e) {
-      err.textContent = e.message;
-      err.hidden = false;
-      clearPhoto();
-    });
-  });
-
-  $('photoClear').addEventListener('click', clearPhoto);
+  var clearPhoto = photoPicker({
+    input: 'fPhoto', preview: 'photoPreview', img: 'photoImg',
+    info: 'photoInfo', err: 'formErr', clear: 'photoClear'
+  }, function (dataUrl) { pendingPhoto = dataUrl; });
 
   function startPlacing() {
     placing = true;

@@ -519,6 +519,14 @@ img.photo {
 
 .photo-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
 .photo-pair .photo { margin-top: 0; }
+.photo-pair figure { margin: 0; }
+.photo-pair figcaption {
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--muted);
+  text-align: center;
+  margin-top: 4px;
+}
 .photo.after { background: repeating-linear-gradient(45deg, #E8F1EA, #E8F1EA 12px, #DCEAE1 12px, #DCEAE1 24px); color: var(--green-dk); }
 
 .crew { margin-top: 16px; }
