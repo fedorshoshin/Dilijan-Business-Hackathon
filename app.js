@@ -16,6 +16,8 @@
     return {
       points: 0,
       pledges: [],
+      projects: [],
+      donated: 0,
       spots: [
         {
           id: 's1',
@@ -169,6 +171,42 @@
       cost: 900000000, raised: 12000000, backers: 3,
       what: 'Tavush has one wastewater plant and it serves Dilijan, but it is mechanical only — it strains out solids and lets the rest through. A biological stage is what actually stops the river being polluted. No number of volunteers can do this one.',
       who: 'State and international donor funding, via the Water Committee.'
+    },
+    {
+      id: 'f9', title: 'Eco-club starter packs for 3 schools',
+      cost: 90000, raised: 30000, backers: 4,
+      what: 'Sorting bins, posters and a simple lesson kit so each school can run its own waste club instead of waiting for the town to act.',
+      who: 'School teachers, with a one-day training from an NGO.'
+    },
+    {
+      id: 'f10', title: '"Take it home" signs for the trails',
+      cost: 140000, raised: 140000, backers: 12,
+      what: 'Twelve weatherproof signs at trailheads and picnic spots. Tourist litter on the Parz Lake trail is worst right after weekends.',
+      who: 'National park administration installs and maintains them.'
+    },
+    {
+      id: 'f11', title: 'Compost bins for the market',
+      cost: 240000, raised: 55000, backers: 6,
+      what: 'Food waste is the heaviest, smelliest part of what goes to landfill. Composting it at the market cuts the load and makes soil for the parks.',
+      who: 'Market traders association, with municipal collection.'
+    },
+    {
+      id: 'f12', title: 'Drone survey of the forest edge',
+      cost: 550000, raised: 180000, backers: 8,
+      what: 'Two flights a year over the park boundary, so new clearings and new dumps are spotted early instead of a year later.',
+      who: 'Contracted surveyor; imagery shared with the park administration.'
+    },
+    {
+      id: 'f13', title: 'Sorting station for collected plastic',
+      cost: 3500000, raised: 400000, backers: 5,
+      what: 'A covered place to sort and bale plastic before it goes to recyclers. Without one, sorted plastic gets mixed back into ordinary rubbish.',
+      who: 'Municipality, on the existing sanitation service yard.'
+    },
+    {
+      id: 'f14', title: 'Sewer connection for 40 riverside houses',
+      cost: 45000000, raised: 2100000, backers: 9,
+      what: 'Houses along the bank with no sewer connection discharge straight into the Aghstev. Connecting them is the cheapest real cut in river pollution available today.',
+      who: 'Water Committee and Veolia Jur, with municipal co-funding.'
     }
   ];
 
@@ -181,7 +219,10 @@
       if (raw) {
         var parsed = JSON.parse(raw);
         if (parsed && Array.isArray(parsed.spots)) {
-          if (!Array.isArray(parsed.pledges)) parsed.pledges = [];   // saved before funding existed
+          // fill in anything added after this device last saved
+          if (!Array.isArray(parsed.pledges)) parsed.pledges = [];
+          if (!Array.isArray(parsed.projects)) parsed.projects = [];
+          if (typeof parsed.donated !== 'number') parsed.donated = 0;
           return parsed;
         }
       }
@@ -270,16 +311,27 @@
 
   function pledged(id) { return state.pledges.indexOf(id) !== -1; }
 
+  /* the fixed list plus anything proposed on this device */
+  function allFund() { return FUND.concat(state.projects); }
+
   function renderFund() {
     var cloud = $('fundCloud');
     if (!cloud) return;
     cloud.innerHTML = '';
 
-    FUND.forEach(function (item) {
+    var total = $('fundTotal');
+    if (state.donated > 0) {
+      total.textContent = 'You have pledged ' + amd(state.donated) + ' so far. Thank you.';
+      total.hidden = false;
+    } else {
+      total.hidden = true;
+    }
+
+    allFund().forEach(function (item) {
       var done = item.raised >= item.cost;
       var b = document.createElement('button');
       b.type = 'button';
-      b.className = 'bub t' + tierOf(item.cost) + (done ? ' funded' : '');
+      b.className = 'bub t' + tierOf(item.cost) + (done ? ' funded' : '') + (item.mine ? ' mine' : '');
       b.setAttribute('aria-label', item.title + ' — ' + amd(item.cost) + (done ? ', fully funded' : ''));
       b.innerHTML =
         '<span class="bub-title">' + escapeHtml(item.title) + '</span>' +
@@ -290,7 +342,7 @@
   }
 
   function openFund(id) {
-    var item = FUND.find(function (f) { return f.id === id; });
+    var item = allFund().find(function (f) { return f.id === id; });
     if (!item) return;
 
     var mine = pledged(id);
@@ -302,6 +354,7 @@
     var html = '';
     html += '<span class="tag ' + (done ? 'tag-done' : 'tag-official') + '">' +
             (done ? 'Fully funded' : 'Needs funding') + '</span>';
+    if (item.mine) html += ' <span class="tag tag-crew">Proposed by you</span>';
     html += '<h2 id="sheetTitle" style="margin-top:8px">' + escapeHtml(item.title) + '</h2>';
     html += '<p class="sheet-sub">' + amd(item.cost) + ' · ' + plural(backers, 'backer', 'backers') + '</p>';
     html += '<p class="sheet-desc">' + escapeHtml(item.what) + '</p>';
@@ -340,6 +393,131 @@
     openFund(id);
     toast('Pledge registered — the municipality will be in touch');
   }
+
+  /* ---------- donate ---------- */
+  var DONATE_STEPS = [5000, 10000, 25000, 100000];
+
+  function openDonate() {
+    var html = '';
+    html += '<h2 id="sheetTitle">Donate to Clean Dilijan</h2>';
+    html += '<p class="sheet-sub">Not tied to one project — spent on whatever is closest to being finished.</p>';
+
+    html += '<div class="amounts">';
+    DONATE_STEPS.forEach(function (n) {
+      html += '<button class="amount" type="button" data-amount="' + n + '">' + amd(n) + '</button>';
+    });
+    html += '</div>';
+
+    html += '<label class="field"><span>Or another amount (AMD)</span>' +
+            '<input id="customAmount" type="number" min="100" step="100" inputmode="numeric" placeholder="e.g. 15000"></label>';
+    html += '<p class="err" id="donateErr" hidden></p>';
+
+    html += '<div class="notice"><strong>No money moves through this app.</strong> ' +
+            'This records that you intend to give. The municipality or partner NGO ' +
+            'contacts you and takes the payment directly, so it stays traceable.</div>';
+
+    html += '<div class="sheet-actions">' +
+            '<button class="btn btn-primary btn-block" id="donateConfirm" type="button">Register my pledge</button>' +
+            '</div>';
+
+    $('sheetBody').innerHTML = html;
+
+    var chosen = null;
+    var buttons = $('sheetBody').querySelectorAll('.amount');
+    Array.prototype.forEach.call(buttons, function (btn) {
+      btn.addEventListener('click', function () {
+        Array.prototype.forEach.call(buttons, function (o) { o.classList.remove('on'); });
+        btn.classList.add('on');
+        chosen = Number(btn.getAttribute('data-amount'));
+        $('customAmount').value = '';
+        $('donateErr').hidden = true;
+      });
+    });
+    $('customAmount').addEventListener('input', function () {
+      Array.prototype.forEach.call(buttons, function (o) { o.classList.remove('on'); });
+      chosen = null;
+      $('donateErr').hidden = true;
+    });
+
+    $('donateConfirm').addEventListener('click', function () {
+      var custom = Number($('customAmount').value);
+      var amount = chosen || (custom > 0 ? Math.round(custom) : 0);
+      if (!amount || amount < 100) {
+        var err = $('donateErr');
+        err.textContent = 'Pick an amount, or type at least 100 AMD.';
+        err.hidden = false;
+        return;
+      }
+      state.donated += amount;
+      hide($('sheetBack'));
+      render();
+      toast('Pledged ' + amd(amount) + ' — thank you');
+    });
+
+    show($('sheetBack'));
+  }
+
+  /* ---------- propose a project ---------- */
+  function openNewProject() {
+    var html = '';
+    html += '<h2 id="sheetTitle">Propose a project</h2>';
+    html += '<p class="sheet-sub">Something Dilijan needs that money would fix. It joins the cloud, sized by its cost.</p>';
+
+    html += '<form id="projForm" novalidate>';
+    html += '<label class="field"><span>What is it called?</span>' +
+            '<input id="pTitle" type="text" maxlength="60" required placeholder="e.g. Bins for the school street"></label>';
+    html += '<label class="field"><span>What would the money buy?</span>' +
+            '<textarea id="pWhat" rows="3" maxlength="240" required placeholder="e.g. Six covered bins so the street stops filling with bags on collection day."></textarea></label>';
+    html += '<label class="field"><span>Roughly how much? (AMD)</span>' +
+            '<input id="pCost" type="number" min="1000" step="1000" inputmode="numeric" required placeholder="e.g. 250000"></label>';
+    html += '<label class="field"><span>Who would do the work?</span>' +
+            '<input id="pWho" type="text" maxlength="80" required placeholder="e.g. Municipality, on the existing collection round"></label>';
+    html += '<p class="err" id="projErr" hidden></p>';
+    html += '<button class="btn btn-primary btn-block" type="submit">Add to the cloud</button>';
+    html += '</form>';
+
+    $('sheetBody').innerHTML = html;
+
+    $('projForm').addEventListener('input', function () { $('projErr').hidden = true; });
+
+    $('projForm').addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var title = $('pTitle').value.trim();
+      var what = $('pWhat').value.trim();
+      var who = $('pWho').value.trim();
+      var cost = Math.round(Number($('pCost').value));
+      var err = $('projErr');
+
+      if (!title || !what || !who) {
+        err.textContent = 'Please fill in every field.';
+        err.hidden = false;
+        return;
+      }
+      if (!cost || cost < 1000) {
+        err.textContent = 'Give a rough cost of at least 1 000 AMD.';
+        err.hidden = false;
+        return;
+      }
+
+      state.projects.push({
+        id: 'p' + Date.now(),
+        title: title, what: what, who: who,
+        cost: cost, raised: 0, backers: 0,
+        mine: true
+      });
+
+      hide($('sheetBack'));
+      render();
+      toast('Project added to the cloud');
+      $('fundCloud').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+
+    show($('sheetBack'));
+    setTimeout(function () { $('pTitle').focus(); }, 60);
+  }
+
+  $('donateBtn').addEventListener('click', openDonate);
+  $('newProjectBtn').addEventListener('click', openNewProject);
 
   function renderPins() {
     var box = $('pins');

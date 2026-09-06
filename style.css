@@ -573,7 +573,7 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 /* ---------- form ---------- */
 .field { display: block; margin-top: 16px; }
 .field > span, .field > legend { display: block; font-size: 14px; font-weight: 650; margin-bottom: 4px; padding: 0; }
-.field input[type="text"], .field textarea {
+.field input[type="text"], .field input[type="number"], .field textarea {
   width: 100%;
   font: inherit;
   min-height: 44px;
@@ -661,6 +661,46 @@ fieldset.field { border: 0; margin-inline: 0; padding: 0; }
   color: var(--green-dk);
 }
 .bub.funded .bub-cost { color: var(--green-dk); font-weight: 650; }
+
+.bub.mine { border-style: dashed; border-color: var(--amber); }
+
+.fund-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 24px;
+}
+.fund-actions .btn { flex: 1 1 160px; }
+
+.fund-total {
+  margin-top: 12px;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--green-dk);
+}
+
+/* donate amount picker */
+.amounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+.amount {
+  font: inherit;
+  font-weight: 650;
+  min-height: 44px;
+  padding: 8px 16px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  flex: 1 1 auto;
+  transition: background-color .2s var(--ease), border-color .2s var(--ease);
+}
+.amount:hover { background: var(--bg); }
+.amount.on { background: var(--green-sf); border-color: var(--green); color: var(--green-dk); }
 
 .fund-note {
   margin-top: 24px;
