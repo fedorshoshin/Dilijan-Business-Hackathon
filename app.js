@@ -14,7 +14,7 @@
     place: 'Dilijan, Tavush'
   };
   var ME = USER.name;
-  var CERT_GOAL = 3;          // cleanups needed for the certificate
+  var CERT_GOAL = 2;          // cleanups needed for the certificate
   var PTS_REPORT = 5;
   var PTS_JOIN = 5;
   var PTS_CLEAN = 20;
@@ -620,6 +620,7 @@
 
     var pct = Math.min(100, Math.round((cleanedN / CERT_GOAL) * 100));
     $('certFill').style.width = pct + '%';
+    $('certBar').setAttribute('aria-valuemax', String(CERT_GOAL));
     $('certBar').setAttribute('aria-valuenow', String(Math.min(cleanedN, CERT_GOAL)));
 
     var cert = $('cert');
