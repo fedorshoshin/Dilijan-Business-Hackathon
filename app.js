@@ -15,6 +15,7 @@
   function seed() {
     return {
       points: 0,
+      pledges: [],
       spots: [
         {
           id: 's1',
@@ -118,6 +119,59 @@
     };
   }
 
+  /* ---------- things that need money ----------
+     Fixed list: these are needs, not user content. Pledges are stored per device. */
+  var FUND = [
+    {
+      id: 'f1', title: 'Gloves, bags and a first-aid kit',
+      cost: 60000, raised: 45000, backers: 7,
+      what: 'Enough protective gear for a 20-person crew to work a full Saturday on a riverbank without cutting their hands on glass.',
+      who: 'Bought by the municipality, stored at the community centre and lent to any crew.'
+    },
+    {
+      id: 'f2', title: 'Truck hire for one river clear-out',
+      cost: 120000, raised: 120000, backers: 14,
+      what: 'A day of truck and driver to haul away what a crew collects. Without it, full bags sit on the bank and end up back in the water.',
+      who: 'Dilijan municipal sanitation service, one working day.'
+    },
+    {
+      id: 'f3', title: 'Litter pickers and wheelbarrows',
+      cost: 180000, raised: 60000, backers: 5,
+      what: 'Twenty grabbers and four wheelbarrows, so steep banks and thorny ground can be cleared safely.',
+      who: 'Shared equipment library, managed by volunteers.'
+    },
+    {
+      id: 'f4', title: 'Five more recycling bins',
+      cost: 350000, raised: 90000, backers: 9,
+      what: 'Dilijan had no public plastic recycling bins until students installed five in March 2025. Five more would cover the centre and the bus station.',
+      who: 'Installed by the municipality, emptied on the existing collection round.'
+    },
+    {
+      id: 'f5', title: 'Water testing kit for the Aghstev',
+      cost: 450000, raised: 0, backers: 0,
+      what: 'Field kit to measure what is actually in the river month by month. Numbers are what turn a complaint into evidence.',
+      who: 'Operated by a school science club with an NGO supervising.'
+    },
+    {
+      id: 'f6', title: 'Camera traps for logging evidence',
+      cost: 700000, raised: 210000, backers: 11,
+      what: 'Around Dilijan at least 2,000 trees are cut illegally each year, but only about one in eleven reported cases ends in a conviction. Cameras turn "we saw stumps" into proof.',
+      who: 'Eco-Patrol volunteers, handing footage to the inspection body.'
+    },
+    {
+      id: 'f7', title: 'Fenced waste point at the park entrance',
+      cost: 1200000, raised: 300000, backers: 6,
+      what: 'A proper enclosed collection point where the illegal dump keeps reappearing at the forest edge, so waste stops being tipped inside the national park.',
+      who: 'Municipality build, national park administration maintains it.'
+    },
+    {
+      id: 'f8', title: 'Biological stage for the treatment plant',
+      cost: 900000000, raised: 12000000, backers: 3,
+      what: 'Tavush has one wastewater plant and it serves Dilijan, but it is mechanical only — it strains out solids and lets the rest through. A biological stage is what actually stops the river being polluted. No number of volunteers can do this one.',
+      who: 'State and international donor funding, via the Water Committee.'
+    }
+  ];
+
   /* ---------- state ---------- */
   var state = load();
 
@@ -126,7 +180,10 @@
       var raw = localStorage.getItem(KEY);
       if (raw) {
         var parsed = JSON.parse(raw);
-        if (parsed && Array.isArray(parsed.spots)) return parsed;
+        if (parsed && Array.isArray(parsed.spots)) {
+          if (!Array.isArray(parsed.pledges)) parsed.pledges = [];   // saved before funding existed
+          return parsed;
+        }
       }
     } catch (e) { /* corrupt or blocked storage — fall through to seed */ }
     return seed();
@@ -191,8 +248,97 @@
     renderPins();
     renderCards();
     renderStats();
+    renderFund();
     $('pointsValue').textContent = state.points;
     save();
+  }
+
+  /* money, grouped in threes: 1200000 -> "1 200 000 AMD"
+     (spelled out, not the ֏ sign, which falls back to a mismatched font) */
+  function amd(n) {
+    return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' AMD';
+  }
+
+  /* button size band — bigger bill, bigger button */
+  function tierOf(cost) {
+    if (cost >= 5000000) return 5;
+    if (cost >= 800000) return 4;
+    if (cost >= 300000) return 3;
+    if (cost >= 100000) return 2;
+    return 1;
+  }
+
+  function pledged(id) { return state.pledges.indexOf(id) !== -1; }
+
+  function renderFund() {
+    var cloud = $('fundCloud');
+    if (!cloud) return;
+    cloud.innerHTML = '';
+
+    FUND.forEach(function (item) {
+      var done = item.raised >= item.cost;
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'bub t' + tierOf(item.cost) + (done ? ' funded' : '');
+      b.setAttribute('aria-label', item.title + ' — ' + amd(item.cost) + (done ? ', fully funded' : ''));
+      b.innerHTML =
+        '<span class="bub-title">' + escapeHtml(item.title) + '</span>' +
+        '<span class="bub-cost">' + (done ? 'Funded ✓' : amd(item.cost)) + '</span>';
+      b.addEventListener('click', function () { openFund(item.id); });
+      cloud.appendChild(b);
+    });
+  }
+
+  function openFund(id) {
+    var item = FUND.find(function (f) { return f.id === id; });
+    if (!item) return;
+
+    var mine = pledged(id);
+    var raised = item.raised;
+    var backers = item.backers + (mine ? 1 : 0);
+    var pct = Math.min(100, Math.round((raised / item.cost) * 100));
+    var done = raised >= item.cost;
+
+    var html = '';
+    html += '<span class="tag ' + (done ? 'tag-done' : 'tag-official') + '">' +
+            (done ? 'Fully funded' : 'Needs funding') + '</span>';
+    html += '<h2 id="sheetTitle" style="margin-top:8px">' + escapeHtml(item.title) + '</h2>';
+    html += '<p class="sheet-sub">' + amd(item.cost) + ' · ' + plural(backers, 'backer', 'backers') + '</p>';
+    html += '<p class="sheet-desc">' + escapeHtml(item.what) + '</p>';
+
+    html += '<div class="fund-bar-wrap">' +
+              '<div class="bar"><span style="width:' + pct + '%"></span></div>' +
+              '<p class="cert-note">' + amd(raised) + ' raised of ' + amd(item.cost) + ' (' + pct + '%)</p>' +
+            '</div>';
+
+    html += '<div class="crew"><h3>Who would do the work</h3><p>' + escapeHtml(item.who) + '</p></div>';
+
+    html += '<div class="notice"><strong>Your money would not pass through this app.</strong> ' +
+            'Pledging here tells the municipality someone is willing to pay, and they ' +
+            'invoice you directly. We only track what was needed and what got delivered.</div>';
+
+    html += '<div class="sheet-actions">';
+    if (mine) {
+      html += '<button class="btn btn-done btn-block" type="button" disabled>You pledged support ✓</button>';
+    } else {
+      html += '<button class="btn btn-primary btn-block" id="pledgeBtn" type="button">Pledge to fund this</button>';
+    }
+    html += '</div>';
+
+    $('sheetBody').innerHTML = html;
+
+    var pb = $('pledgeBtn');
+    if (pb) pb.addEventListener('click', function () { pledge(id); });
+
+    show($('sheetBack'));
+  }
+
+  function pledge(id) {
+    if (pledged(id)) return;
+    state.pledges.push(id);
+    render();
+    openFund(id);
+    toast('Pledge registered — the municipality will be in touch');
   }
 
   function renderPins() {

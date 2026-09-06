@@ -604,6 +604,77 @@ fieldset.field { border: 0; margin-inline: 0; padding: 0; }
 
 .err { color: var(--red); font-size: 14px; margin-top: 12px; }
 
+/* ---------- funding cloud ---------- */
+.fund-strip {
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+  padding: 32px 0;
+}
+.fund-strip .panel-head { margin-bottom: 24px; }
+.fund-strip .sub { max-width: 60ch; }
+
+.cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.bub {
+  font: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-height: 44px;              /* tap target, even for the cheapest item */
+  border-radius: var(--r-lg);
+  border: 1px solid #D3E0D8;
+  background: var(--surface);
+  color: var(--ink);
+  text-align: left;
+  transition: transform .2s var(--ease), box-shadow .2s var(--ease), border-color .2s var(--ease);
+}
+.bub:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: #B6CFC0; }
+.bub:active { transform: translateY(0); }
+.bub-title { font-weight: 650; line-height: 1.25; }
+.bub-cost { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* size and weight scale with the size of the bill */
+.bub.t1 { padding: 8px 12px; font-size: 14px; }
+.bub.t2 { padding: 12px 16px; font-size: 16px; }
+.bub.t3 { padding: 12px 16px; font-size: 16px; background: var(--green-sf); }
+.bub.t4 {
+  padding: 16px 24px; font-size: 20px;
+  background: var(--green); border-color: var(--green); color: #fff;
+}
+.bub.t5 {
+  padding: 24px 32px; font-size: 24px;
+  background: var(--green-dk); border-color: var(--green-dk); color: #fff;
+  flex-basis: 100%;
+}
+.bub.t4 .bub-cost, .bub.t5 .bub-cost { color: #DCEAE1; }
+
+.bub.funded {
+  background: var(--green-sf);
+  border-color: #CFE2D6;
+  color: var(--green-dk);
+}
+.bub.funded .bub-cost { color: var(--green-dk); font-weight: 650; }
+
+.fund-note {
+  margin-top: 24px;
+  font-size: 14px;
+  color: var(--muted);
+  max-width: 60ch;
+  border-left: 3px solid #CFE2D6;
+  padding-left: 12px;
+}
+.fund-note strong { color: var(--ink); }
+
+.fund-bar-wrap { margin-top: 16px; }
+.fund-bar-wrap .cert-note { margin-top: 8px; }
+
 /* ---------- footer + toast ---------- */
 .foot {
   display: flex;
