@@ -1,12 +1,12 @@
-/* Clean Dilijan — demo app.
+/* Havak — demo app.
    All state lives in this device's localStorage. No server, no accounts. */
 
 (function () {
   'use strict';
 
-  /* bumped to v2 when the demo gained a starting history — an old save on a
-     device would otherwise hide the new starting point */
-  var KEY = 'clean-dilijan-v2';
+  /* renamed with the app — an old save under the previous key is left behind,
+     so every device picks up the current starting point */
+  var KEY = 'havak-v1';
 
   /* the signed-in account. A demo, so it is fixed rather than a real login. */
   var USER = {
@@ -498,7 +498,7 @@
 
   function openDonate() {
     var html = '';
-    html += '<h2 id="sheetTitle">Donate to Clean Dilijan</h2>';
+    html += '<h2 id="sheetTitle">Donate to Havak</h2>';
     html += '<p class="sheet-sub">Not tied to one project — spent on whatever is closest to being finished.</p>';
 
     html += '<div class="amounts">';
@@ -977,7 +977,7 @@
     // double border
     c += 'q ' + PDF_GREEN + ' RG 2 w 24 24 794 547 re S 0.6 w 34 34 774 527 re S Q\n';
 
-    c += pdfCentred('CLEAN DILIJAN', 11, true, 505, PDF_GREEN);
+    c += pdfCentred('HAVAK', 11, true, 505, PDF_GREEN);
     c += pdfCentred('Certificate of Recognition', 30, true, 460, PDF_INK);
     c += 'q ' + PDF_GREEN + ' RG 2 w 391 442 m 451 442 l S Q\n';
 
@@ -1003,9 +1003,9 @@
     c += pdfLine(d.points + ' eco-points', 10, false, 60, 68, PDF_MUTED);
 
     c += 'q 0.82 0.80 0.75 RG 0.8 w 562 96 m 782 96 l S Q\n';
-    c += pdfLine('Clean Dilijan community platform', 10, false, 782 - pdfWidth('Clean Dilijan community platform', 10, false), 80, PDF_MUTED);
+    c += pdfLine('Havak community platform', 10, false, 782 - pdfWidth('Havak community platform', 10, false), 80, PDF_MUTED);
 
-    c += pdfCentred('Demonstration certificate - issued by the Clean Dilijan community, pending municipal endorsement.',
+    c += pdfCentred('Demonstration certificate - issued by the Havak community, pending municipal endorsement.',
                     9, false, 44, PDF_MUTED);
 
     var objs = [];
@@ -1054,7 +1054,7 @@
     var url = URL.createObjectURL(buildCertPdf(d));
     var a = document.createElement('a');
     a.href = url;
-    a.download = 'Clean-Dilijan-Certificate-' + d.name.replace(/\s+/g, '-') + '.pdf';
+    a.download = 'Havak-Certificate-' + d.name.replace(/\s+/g, '-') + '.pdf';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1080,7 +1080,7 @@
     }
 
     html += '<div class="certdoc">' +
-              '<p class="cd-eyebrow">Clean Dilijan</p>' +
+              '<p class="cd-eyebrow">Havak</p>' +
               '<h3>Certificate of Recognition</h3>' +
               '<div class="cd-rule"></div>' +
               '<p class="cd-label">This certifies that</p>' +
