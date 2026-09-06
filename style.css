@@ -1,5 +1,5 @@
 /* Clean Dilijan — design tokens
-   type scale 14 / 16 / 20 / 24 / 32 · spacing scale 4 / 8 / 12 / 16 / 24 / 32 */
+   type scale 14 / 16 / 20 / 24 / 32 / 40 · spacing scale 4 / 8 / 12 / 16 / 24 / 32 */
 :root {
   --bg:        #F4F2EC;
   --surface:   #FFFFFF;
@@ -89,6 +89,135 @@ p  { margin: 0; }
   transition: transform .28s var(--ease);
 }
 .points.bump { transform: scale(1.12); }
+
+/* ---------- hero ---------- */
+.sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+html { scroll-behavior: smooth; }
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, #F0F4EC 0%, #E7EFE3 100%);
+  border-bottom: 1px solid var(--line);
+  padding: 32px 0 0;
+}
+.hero-art { position: absolute; left: 0; right: 0; bottom: 0; height: 140px; pointer-events: none; }
+.hero-art svg { display: block; width: 100%; height: 100%; }
+.hero-in { position: relative; padding-bottom: 32px; }
+
+.eyebrow {
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--green);
+}
+.hero h1 {
+  font-size: 32px;
+  margin-top: 8px;
+  max-width: 16ch;
+}
+.hero-am {
+  font-size: 20px;
+  color: var(--green-dk);
+  margin-top: 4px;
+}
+.lead {
+  font-size: 16px;
+  color: var(--muted);
+  margin-top: 16px;
+  max-width: 60ch;
+}
+
+.hero-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin: 24px 0;
+}
+.hero-stats div { min-width: 88px; }
+.hero-stats dt {
+  font-size: 32px;
+  font-weight: 650;
+  line-height: 1.25;
+  color: var(--green-dk);
+  font-variant-numeric: tabular-nums;
+}
+.hero-stats dd { margin: 0; font-size: 14px; color: var(--muted); }
+
+.btn-lg { min-height: 52px; font-size: 16px; padding: 12px 24px; }
+a.btn { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+
+.scroll-cue {
+  margin-top: 16px;
+  font-size: 14px;
+  color: var(--muted);
+}
+.scroll-cue span {
+  display: inline-block;
+  animation: nudge 2.2s var(--ease) infinite;
+}
+@keyframes nudge {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(4px); }
+}
+
+/* ---------- wheel of finished challenges ---------- */
+.done-strip { padding: 32px 0; background: var(--bg); }
+
+.strip-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.strip-nav { display: none; gap: 8px; flex: none; }
+.rnd {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color .2s var(--ease), border-color .2s var(--ease);
+}
+.rnd:hover { background: var(--green-sf); border-color: #CFE2D6; }
+
+.wheel {
+  display: flex;
+  gap: 12px;
+  list-style: none;
+  margin: 0;
+  padding: 4px 16px 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.wheel::-webkit-scrollbar { display: none; }
+
+.wcard {
+  flex: 0 0 78%;
+  max-width: 320px;
+  scroll-snap-align: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  transition: transform .2s var(--ease), border-color .2s var(--ease);
+}
+.wcard:hover { transform: translateY(-2px); border-color: #CFE2D6; }
+.wshot { display: block; width: 100%; height: auto; background: #EDF3EA; }
+.wbody { padding: 12px 16px 16px; }
+.wbody h3 { margin-top: 8px; }
+.wmeta { font-size: 14px; color: var(--muted); margin-top: 4px; }
+
+.strip-foot { margin-top: 16px; }
+.center { text-align: center; margin-top: 8px; }
 
 /* ---------- panels ---------- */
 .panel {
@@ -503,9 +632,15 @@ fieldset.field { border: 0; margin-inline: 0; padding: 0; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
 @media (min-width: 560px) {
-  h1 { font-size: 32px; }
   .panel { padding: 24px; }
   .sheet { padding: 32px 24px; }
+  .hero { padding-top: 40px; }
+  .hero h1 { font-size: 40px; }
+  .wcard { flex-basis: 300px; }
+  .wheel { padding-inline: calc(50% - 340px + 16px); }
+  .strip-nav { display: flex; }
+  .strip-foot .btn-block { width: auto; min-width: 240px; display: inline-flex; }
+  .strip-foot { text-align: center; }
 }
 
 @media (prefers-reduced-motion: reduce) {

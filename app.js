@@ -501,6 +501,19 @@
     else if (placing) stopPlacing();
   });
 
+  /* ---------- wheel of finished challenges ---------- */
+  (function () {
+    var wheel = $('wheel');
+    if (!wheel) return;
+    function step(dir) {
+      var card = wheel.querySelector('.wcard');
+      var by = card ? card.getBoundingClientRect().width + 12 : wheel.clientWidth * 0.8;
+      wheel.scrollBy({ left: dir * by, behavior: 'smooth' });
+    }
+    $('wheelPrev').addEventListener('click', function () { step(-1); });
+    $('wheelNext').addEventListener('click', function () { step(1); });
+  })();
+
   $('resetBtn').addEventListener('click', function () {
     state = seed();
     newestId = null;
