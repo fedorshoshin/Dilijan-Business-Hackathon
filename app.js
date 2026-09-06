@@ -20,6 +20,7 @@
   var PTS_REPORT = 5;
   var PTS_JOIN = 5;
   var PTS_CLEAN = 20;
+  var VOTE_COST = 10;         // points spent to back one funding project
 
   /* ---------- seed data: plausible spots around Dilijan ----------
      The account starts with two cleanups already behind it, so one more
@@ -28,6 +29,7 @@
     return {
       points: 2 * PTS_JOIN + 2 * PTS_CLEAN,
       pledges: [],
+      votes: [],
       projects: [],
       donated: 0,
       spots: [
@@ -139,85 +141,85 @@
   var FUND = [
     {
       id: 'f1', title: 'Gloves, bags and a first-aid kit',
-      cost: 60000, raised: 45000, backers: 7,
+      cost: 60000, raised: 45000, backers: 7, votes: 34,
       what: 'Enough protective gear for a 20-person crew to work a full Saturday on a riverbank without cutting their hands on glass.',
       who: 'Bought by the municipality, stored at the community centre and lent to any crew.'
     },
     {
       id: 'f2', title: 'Truck hire for one river clear-out',
-      cost: 120000, raised: 120000, backers: 14,
+      cost: 120000, raised: 120000, backers: 14, votes: 41,
       what: 'A day of truck and driver to haul away what a crew collects. Without it, full bags sit on the bank and end up back in the water.',
       who: 'Dilijan municipal sanitation service, one working day.'
     },
     {
       id: 'f3', title: 'Litter pickers and wheelbarrows',
-      cost: 180000, raised: 60000, backers: 5,
+      cost: 180000, raised: 60000, backers: 5, votes: 22,
       what: 'Twenty grabbers and four wheelbarrows, so steep banks and thorny ground can be cleared safely.',
       who: 'Shared equipment library, managed by volunteers.'
     },
     {
       id: 'f4', title: 'Five more recycling bins',
-      cost: 350000, raised: 90000, backers: 9,
+      cost: 350000, raised: 90000, backers: 9, votes: 78,
       what: 'Dilijan had no public plastic recycling bins until students installed five in March 2025. Five more would cover the centre and the bus station.',
       who: 'Installed by the municipality, emptied on the existing collection round.'
     },
     {
       id: 'f5', title: 'Water testing kit for the Aghstev',
-      cost: 450000, raised: 0, backers: 0,
+      cost: 450000, raised: 0, backers: 0, votes: 29,
       what: 'Field kit to measure what is actually in the river month by month. Numbers are what turn a complaint into evidence.',
       who: 'Operated by a school science club with an NGO supervising.'
     },
     {
       id: 'f6', title: 'Camera traps for logging evidence',
-      cost: 700000, raised: 210000, backers: 11,
+      cost: 700000, raised: 210000, backers: 11, votes: 52,
       what: 'Around Dilijan at least 2,000 trees are cut illegally each year, but only about one in eleven reported cases ends in a conviction. Cameras turn "we saw stumps" into proof.',
       who: 'Eco-Patrol volunteers, handing footage to the inspection body.'
     },
     {
       id: 'f7', title: 'Fenced waste point at the park entrance',
-      cost: 1200000, raised: 300000, backers: 6,
+      cost: 1200000, raised: 300000, backers: 6, votes: 47,
       what: 'A proper enclosed collection point where the illegal dump keeps reappearing at the forest edge, so waste stops being tipped inside the national park.',
       who: 'Municipality build, national park administration maintains it.'
     },
     {
       id: 'f8', title: 'Biological stage for the treatment plant',
-      cost: 900000000, raised: 12000000, backers: 3,
+      cost: 900000000, raised: 12000000, backers: 3, votes: 96,
       what: 'Tavush has one wastewater plant and it serves Dilijan, but it is mechanical only — it strains out solids and lets the rest through. A biological stage is what actually stops the river being polluted. No number of volunteers can do this one.',
       who: 'State and international donor funding, via the Water Committee.'
     },
     {
       id: 'f9', title: 'Eco-club starter packs for 3 schools',
-      cost: 90000, raised: 30000, backers: 4,
+      cost: 90000, raised: 30000, backers: 4, votes: 31,
       what: 'Sorting bins, posters and a simple lesson kit so each school can run its own waste club instead of waiting for the town to act.',
       who: 'School teachers, with a one-day training from an NGO.'
     },
     {
       id: 'f10', title: '"Take it home" signs for the trails',
-      cost: 140000, raised: 140000, backers: 12,
+      cost: 140000, raised: 140000, backers: 12, votes: 26,
       what: 'Twelve weatherproof signs at trailheads and picnic spots. Tourist litter on the Parz Lake trail is worst right after weekends.',
       who: 'National park administration installs and maintains them.'
     },
     {
       id: 'f11', title: 'Compost bins for the market',
-      cost: 240000, raised: 55000, backers: 6,
+      cost: 240000, raised: 55000, backers: 6, votes: 18,
       what: 'Food waste is the heaviest, smelliest part of what goes to landfill. Composting it at the market cuts the load and makes soil for the parks.',
       who: 'Market traders association, with municipal collection.'
     },
     {
       id: 'f12', title: 'Drone survey of the forest edge',
-      cost: 550000, raised: 180000, backers: 8,
+      cost: 550000, raised: 180000, backers: 8, votes: 15,
       what: 'Two flights a year over the park boundary, so new clearings and new dumps are spotted early instead of a year later.',
       who: 'Contracted surveyor; imagery shared with the park administration.'
     },
     {
       id: 'f13', title: 'Sorting station for collected plastic',
-      cost: 3500000, raised: 400000, backers: 5,
+      cost: 3500000, raised: 400000, backers: 5, votes: 24,
       what: 'A covered place to sort and bale plastic before it goes to recyclers. Without one, sorted plastic gets mixed back into ordinary rubbish.',
       who: 'Municipality, on the existing sanitation service yard.'
     },
     {
       id: 'f14', title: 'Sewer connection for 40 riverside houses',
-      cost: 45000000, raised: 2100000, backers: 9,
+      cost: 45000000, raised: 2100000, backers: 9, votes: 63,
       what: 'Houses along the bank with no sewer connection discharge straight into the Aghstev. Connecting them is the cheapest real cut in river pollution available today.',
       who: 'Water Committee and Veolia Jur, with municipal co-funding.'
     }
@@ -234,6 +236,7 @@
         if (parsed && Array.isArray(parsed.spots)) {
           // fill in anything added after this device last saved
           if (!Array.isArray(parsed.pledges)) parsed.pledges = [];
+          if (!Array.isArray(parsed.votes)) parsed.votes = [];
           if (!Array.isArray(parsed.projects)) parsed.projects = [];
           if (typeof parsed.donated !== 'number') parsed.donated = 0;
           return parsed;
@@ -330,8 +333,38 @@
 
   function pledged(id) { return state.pledges.indexOf(id) !== -1; }
 
+  /* ---------- voting ----------
+     Points buy a say in what the town asks for next. A vote never moves money
+     a donor has already promised to a project — it shows demand, nothing else. */
+  function voted(id) { return state.votes.indexOf(id) !== -1; }
+
+  function votesOn(item) { return (item.votes || 0) + (voted(item.id) ? 1 : 0); }
+
+  function canVote() { return state.points >= VOTE_COST; }
+
+  function castVote(id) {
+    var item = allFund().find(function (f) { return f.id === id; });
+    if (!item || voted(id) || !canVote() || fullyFunded(item)) return;
+    state.votes.push(id);
+    addPoints(-VOTE_COST);
+    render();
+    openFund(id);
+    toast('Vote counted · −' + VOTE_COST + ' pts');
+  }
+
   /* the fixed list plus anything proposed on this device */
   function allFund() { return FUND.concat(state.projects); }
+
+  function fullyFunded(item) { return item.raised >= item.cost; }
+
+  /* most-wanted first; ties keep the cheaper one on top.
+     Anything already paid for drops off — the board is about what is still needed. */
+  function byVotes() {
+    return allFund().filter(function (i) { return !fullyFunded(i); })
+      .sort(function (a, b) {
+        return votesOn(b) - votesOn(a) || a.cost - b.cost;
+      });
+  }
 
   function renderFund() {
     var cloud = $('fundCloud');
@@ -354,10 +387,40 @@
       b.setAttribute('aria-label', item.title + ' — ' + amd(item.cost) + (done ? ', fully funded' : ''));
       b.innerHTML =
         '<span class="bub-title">' + escapeHtml(item.title) + '</span>' +
-        '<span class="bub-cost">' + (done ? 'Funded ✓' : amd(item.cost)) + '</span>';
+        '<span class="bub-cost">' + (done ? 'Funded ✓' : amd(item.cost)) +
+          ' · ' + plural(votesOn(item), 'vote', 'votes') + '</span>';
       b.addEventListener('click', function () { openFund(item.id); });
       cloud.appendChild(b);
     });
+
+    renderWanted();
+  }
+
+  function renderWanted() {
+    var board = $('wantedList');
+    if (!board) return;
+    board.innerHTML = '';
+
+    byVotes().slice(0, 3).forEach(function (item, i) {
+      var li = document.createElement('li');
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'wanted' + (voted(item.id) ? ' voted' : '');
+      b.innerHTML =
+        '<span class="wanted-rank">' + (i + 1) + '</span>' +
+        '<span class="wanted-main">' +
+          '<span class="wanted-title">' + escapeHtml(item.title) + '</span>' +
+          '<span class="wanted-meta">' + plural(votesOn(item), 'vote', 'votes') +
+            ' · ' + amd(item.cost) + (voted(item.id) ? ' · you backed this' : '') + '</span>' +
+        '</span>';
+      b.addEventListener('click', function () { openFund(item.id); });
+      li.appendChild(b);
+      board.appendChild(li);
+    });
+
+    $('wantedSub').textContent = canVote()
+      ? 'You have ' + state.points + ' points — a vote costs ' + VOTE_COST + '.'
+      : 'Finish a cleanup to earn points, then you can vote.';
   }
 
   function openFund(id) {
@@ -375,7 +438,8 @@
             (done ? 'Fully funded' : 'Needs funding') + '</span>';
     if (item.mine) html += ' <span class="tag tag-crew">Proposed by you</span>';
     html += '<h2 id="sheetTitle" style="margin-top:8px">' + escapeHtml(item.title) + '</h2>';
-    html += '<p class="sheet-sub">' + amd(item.cost) + ' · ' + plural(backers, 'backer', 'backers') + '</p>';
+    html += '<p class="sheet-sub">' + amd(item.cost) + ' · ' + plural(backers, 'backer', 'backers') +
+            ' · ' + plural(votesOn(item), 'vote', 'votes') + '</p>';
     html += '<p class="sheet-desc">' + escapeHtml(item.what) + '</p>';
 
     html += '<div class="fund-bar-wrap">' +
@@ -387,7 +451,9 @@
 
     html += '<div class="notice"><strong>Your money would not pass through this app.</strong> ' +
             'Pledging here tells the municipality someone is willing to pay, and they ' +
-            'invoice you directly. We only track what was needed and what got delivered.</div>';
+            'invoice you directly. <strong>Votes never move a donor\'s money</strong> — if a ' +
+            'company gives for recycling, it is spent on recycling. Votes are earned by ' +
+            'cleaning up, and they show donors what residents want next.</div>';
 
     html += '<div class="sheet-actions">';
     if (mine) {
@@ -395,9 +461,23 @@
     } else {
       html += '<button class="btn btn-primary btn-block" id="pledgeBtn" type="button">Pledge to fund this</button>';
     }
+    if (done) {
+      // paid for already — nothing left to ask for
+    } else if (voted(id)) {
+      html += '<button class="btn btn-done btn-block" type="button" disabled>You voted for this ✓</button>';
+    } else if (canVote()) {
+      html += '<button class="btn btn-ghost btn-block" id="voteBtn" type="button">' +
+              'Vote for this · ' + VOTE_COST + ' pts</button>';
+    } else {
+      html += '<button class="btn btn-ghost btn-block" type="button" disabled>' +
+              'Voting costs ' + VOTE_COST + ' pts — you have ' + state.points + '</button>';
+    }
     html += '</div>';
 
     $('sheetBody').innerHTML = html;
+
+    var vb = $('voteBtn');
+    if (vb) vb.addEventListener('click', function () { castVote(id); });
 
     var pb = $('pledgeBtn');
     if (pb) pb.addEventListener('click', function () { pledge(id); });
@@ -521,7 +601,7 @@
       state.projects.push({
         id: 'p' + Date.now(),
         title: title, what: what, who: who,
-        cost: cost, raised: 0, backers: 0,
+        cost: cost, raised: 0, backers: 0, votes: 0,
         mine: true
       });
 
