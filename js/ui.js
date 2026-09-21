@@ -91,8 +91,26 @@ Havak.ui = (function () {
     }, 2800);
   }
 
+  /* Five tones from the existing palette, chosen by account id so one person is
+     always the same colour. Until Phase 3 gives us a real uploaded picture this
+     is the whole identity cue on a list — and an identical green circle beside
+     every name is no cue at all.
+
+     FNV-1a, because our ids share a long common prefix ('u-narek', 'u-ani'):
+     a weaker hash put three of the six seeded accounts on the same colour. */
+  var TONES = 5;
+  function tone(seed) {
+    var s = String(seed || ''), n = 2166136261;
+    for (var i = 0; i < s.length; i++) {
+      n ^= s.charCodeAt(i);
+      n = Math.imul(n, 16777619);
+    }
+    return (n >>> 0) % TONES;
+  }
+
   function avatar(user, size) {
-    return el('span.avatar' + (size === 'sm' ? '.avatar-sm' : ''), {
+    var sizes = { sm: '.avatar-sm', lg: '.avatar-lg' };
+    return el('span.avatar.avatar-t' + tone(user.id || user.name) + (sizes[size] || ''), {
       'aria-hidden': 'true',
       text: initials(user.name)
     });

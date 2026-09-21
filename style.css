@@ -471,6 +471,15 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 }
 .avatar-sm { width: 32px; height: 32px; font-size: 14px; }
 
+/* One tone per account, drawn from the palette already in :root — no new
+   colours, so the app still looks like one app. All five carry white text at
+   4.5:1 or better. */
+.avatar-t0 { background: var(--green); }
+.avatar-t1 { background: var(--blue); }
+.avatar-t2 { background: var(--amber); }
+.avatar-t3 { background: var(--green-dk); }
+.avatar-t4 { background: var(--blue-ink); }
+
 .account {
   display: flex;
   align-items: center;

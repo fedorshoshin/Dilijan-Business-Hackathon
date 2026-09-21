@@ -37,7 +37,7 @@ Havak.views = Havak.views || {};
 
     /* --- identity --- */
     var head = el('div.me-head', null, [
-      el('span.avatar.avatar-lg', { 'aria-hidden': 'true', text: ui.initials(user.name) }),
+      ui.avatar(user, 'lg'),
       el('div.me-id', null, [
         el('h1.me-name', { text: user.name }),
         el('p.me-meta', { text: user.place + ' · joined ' + ui.since(user.joinedAt) }),

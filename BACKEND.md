@@ -41,6 +41,7 @@ users (
   email       text not null unique,
   roles       text[] not null,           -- any of 'reporter','cleaner','donor'
   place       text,
+  avatar_key  text,                      -- path in the avatars bucket; null = initials
   joined_at   timestamptz not null default now()
 )
 -- NOTE: no password column. Passwords live in the auth system, never here.
@@ -200,6 +201,13 @@ caches them offline.
 
 Expect photos around 200–800 KB after client-side downscaling, and videos up to
 ~50 MB. The client caps count and size before upload.
+
+**Profile pictures** are a second, separate bucket (`avatars`), not the report
+media table: one row per user, overwritten on change, referenced by
+`users.avatar_key`. Keep it **public-read** even if report media is signed — an
+avatar appears next to every name on every list, and re-signing dozens of URLs
+per screen is a cost with no privacy gained. Writes restricted to the owner's
+own path. The client downscales to 256×256 before upload, so these are ~20 KB.
 
 ## 7. Errors
 

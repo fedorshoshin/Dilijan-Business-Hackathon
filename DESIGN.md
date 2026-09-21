@@ -143,7 +143,7 @@ Five collections. Today they are arrays under one localStorage key
 (`havak-mvp-v1`); from Phase 3.5 they are Postgres tables with the same shape.
 
 ```js
-users:    [{ id, name, email, pass, roles:[], place, joinedAt, avatarSeed }]
+users:    [{ id, name, email, pass, roles:[], place, joinedAt, avatarKey }]
 session:  { userId } | null
 
 reports:  [{ id, reporterId, title, desc,
@@ -414,6 +414,7 @@ this after Phase 6 would mean rewriting every view.
 | 3.3 | Video attach with a poster frame | Plays inline on iOS and Android, no layout jump |
 | 3.4 | Downscale photos before storing; cap count and total size | Quota errors surface as a clear message, never a silent loss |
 | 3.5 | Before/after gallery on the report detail, swipeable | Swipes with a thumb on a real phone |
+| 3.6 | **Profile picture** — take or pick one, square-crop, downscale to 256px, stored as `avatarKey` | Set on the Me screen, appears everywhere that name appears; removing it falls back to initials |
 
 ### Phase 3.5 — Backend cutover *(the pilot phase; blocked on decision #6)*
 
