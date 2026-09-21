@@ -1246,3 +1246,27 @@ body.app.no-tabs .toast { bottom: calc(var(--safe-b) + var(--s-5)); }
   .topbar .avatar-sm { display: none; }   /* decorative; the points chip is not */
   .topbar-in { gap: var(--s-2); }
 }
+
+/* ---------- loading ---------- */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-3);
+  padding: var(--s-6) var(--s-4);
+  color: var(--muted);
+  font-size: var(--t-sm);
+}
+.spinner {
+  width: 20px; height: 20px;
+  border: 2px solid var(--line-green);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.empty .btn { margin-top: var(--s-4); }
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation-duration: 2.4s; }
+}

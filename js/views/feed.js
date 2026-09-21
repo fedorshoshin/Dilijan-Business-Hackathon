@@ -31,23 +31,27 @@ Havak.views = Havak.views || {};
   }
 
   Havak.views.feed = function (screen) {
-    var reports = store.all('reports').sort(function (a, b) {
-      var d = (ORDER[a.status] || 0) - (ORDER[b.status] || 0);
-      return d !== 0 ? d : b.createdAt - a.createdAt;
+    return store.all('reports').then(function (list) {
+      var reports = list.sort(function (a, b) {
+        var d = (ORDER[a.status] || 0) - (ORDER[b.status] || 0);
+        return d !== 0 ? d : b.createdAt - a.createdAt;
+      });
+
+      var open = reports.filter(function (r) { return r.status === 'open'; }).length;
+      var done = reports.filter(function (r) { return r.status === 'confirmed'; }).length;
+
+      screen.appendChild(el('div.wrap.pad', null, [
+        el('div.panel-head', null, [
+          el('h1', { text: 'Dilijan right now' }),
+          el('p.sub', { text: open + ' spots waiting · ' + done + ' cleaned and confirmed' })
+        ]),
+        reports.length
+          ? el('ul.rlist', null, reports.map(card))
+          : ui.empty('No spots reported yet', 'When someone reports one, it shows up here.'),
+        el('p.phase-note', {
+          text: 'The map, the photos and the full detail screen arrive in Phase 2.'
+        })
+      ]));
     });
-
-    var open = reports.filter(function (r) { return r.status === 'open'; }).length;
-    var done = reports.filter(function (r) { return r.status === 'confirmed'; }).length;
-
-    screen.appendChild(el('div.wrap.pad', null, [
-      el('div.panel-head', null, [
-        el('h1', { text: 'Dilijan right now' }),
-        el('p.sub', { text: open + ' spots waiting · ' + done + ' cleaned and confirmed' })
-      ]),
-      el('ul.rlist', null, reports.map(card)),
-      el('p.phase-note', {
-        text: 'The map, the photos and the full detail screen arrive in Phase 2.'
-      })
-    ]));
   };
 })();

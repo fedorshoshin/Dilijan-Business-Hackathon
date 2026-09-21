@@ -143,7 +143,14 @@ Havak.shell = (function () {
     });
   }
 
+  /* Boot is async: the session is loaded before the first render, so the guard
+     and the tab bar never see a half-known user. After Phase 3.5 this is where
+     the token is validated against the server. */
   function start() {
+    return Havak.auth.init().then(mount);
+  }
+
+  function mount() {
     var r = Havak.router;
 
     r.define('/login',  { view: Havak.views.login,  guestOnly: true });

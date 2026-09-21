@@ -241,12 +241,12 @@ Havak.store = (function () {
     return state;
   }
 
-  /* ---------- record helpers ---------- */
-  function all(kind) {
+  /* ---------- record helpers (synchronous guts) ---------- */
+  function allSync(kind) {
     return (state[kind] || []).slice();
   }
 
-  function find(kind, recordId) {
+  function findSync(kind, recordId) {
     var list = state[kind] || [];
     for (var i = 0; i < list.length; i++) {
       if (list[i].id === recordId) return list[i];
@@ -254,28 +254,28 @@ Havak.store = (function () {
     return null;
   }
 
-  function where(kind, test) {
+  function whereSync(kind, test) {
     return (state[kind] || []).filter(test);
   }
 
-  function add(kind, record) {
+  function addSync(kind, record) {
     if (!Array.isArray(state[kind])) state[kind] = [];
     if (!record.id) record.id = id(kind.charAt(0));
     if (!record.createdAt) record.createdAt = Date.now();
     state[kind].push(record);
-    save();
+    if (!save()) throw new StoreError('storage_quota', 'This device would not save that. Storage may be full.');
     return record;
   }
 
-  function update(kind, recordId, patch) {
-    var rec = find(kind, recordId);
-    if (!rec) return null;
+  function updateSync(kind, recordId, patch) {
+    var rec = findSync(kind, recordId);
+    if (!rec) throw new StoreError('not_found', 'That item no longer exists.');
     Object.keys(patch).forEach(function (k) { rec[k] = patch[k]; });
-    save();
+    if (!save()) throw new StoreError('storage_quota', 'This device would not save that. Storage may be full.');
     return rec;
   }
 
-  function remove(kind, recordId) {
+  function removeSync(kind, recordId) {
     var list = state[kind] || [];
     for (var i = 0; i < list.length; i++) {
       if (list[i].id === recordId) {
@@ -287,19 +287,54 @@ Havak.store = (function () {
     return false;
   }
 
+  /* One error shape, matching what the server will send (BACKEND.md §7), so
+     screens written now keep working once the calls go over the network. */
+  function StoreError(code, message) {
+    this.code = code;
+    this.message = message;
+  }
+  StoreError.prototype = Object.create(Error.prototype);
+  StoreError.prototype.name = 'StoreError';
+
+  /* ---------- the async face ----------
+     The guts above are synchronous because the data is local today. Every
+     method the app calls returns a Promise anyway, so that when this is swapped
+     for the real backend (DESIGN.md 3.5) the change stops at this file instead
+     of reaching every screen. Retrofitting this later would mean rewriting
+     every view; doing it now costs almost nothing. */
+  function async(fn) {
+    return function () {
+      var args = arguments;
+      return new Promise(function (resolve) {
+        resolve(fn.apply(null, args));
+      });
+    };
+  }
+
   return {
     KEY: KEY,
     VERSION: VERSION,
-    get: function () { return state; },
-    save: save,
-    reset: reset,
+    StoreError: StoreError,
+
+    /* resolves once the data is usable; the real one will fetch */
+    ready: function () { return Promise.resolve(true); },
+
+    /* async — everything the views use */
+    all: async(allSync),
+    find: async(findSync),
+    where: async(whereSync),
+    add: async(addSync),
+    update: async(updateSync),
+    remove: async(removeSync),
+    reset: async(reset),
+
+    /* synchronous, and deliberately so: session state is read on every render
+       and every guard. It stays cached in memory on both sides of the swap. */
+    session: function () { return state.session; },
+    setSession: function (s) { state.session = s; return save(); },
+    userSync: function (userId) { return findSync('users', userId); },
+
     saveOk: function () { return lastSaveOk; },
-    newId: id,
-    all: all,
-    find: find,
-    where: where,
-    add: add,
-    update: update,
-    remove: remove
+    newId: id
   };
 })();

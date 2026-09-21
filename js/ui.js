@@ -98,6 +98,31 @@ Havak.ui = (function () {
     });
   }
 
+  /* Shown while an async view is resolving. Once the store talks to a server
+     this is what a Dilijan user on a slow connection actually looks at, so it
+     is part of the design, not a placeholder. */
+  function loading(label) {
+    return el('div.loading', { role: 'status', 'aria-live': 'polite' }, [
+      el('span.spinner', { 'aria-hidden': 'true' }),
+      el('span.loading-text', { text: label || 'Loading…' })
+    ]);
+  }
+
+  /* One error shape for the whole app (BACKEND.md §7). Always offers a way
+     forward — a dead end with no retry is how people give up on an app. */
+  function errorState(err, retry) {
+    var message = (err && err.message) || 'Something went wrong.';
+    return el('div.empty', null, [
+      el('p.empty-title', { text: 'That did not work' }),
+      el('p.empty-line', { text: message }),
+      retry ? el('button.btn.btn-ghost', {
+        type: 'button',
+        text: 'Try again',
+        onclick: function () { retry(); }
+      }) : null
+    ]);
+  }
+
   function empty(title, line) {
     return el('div.empty', null, [
       el('p.empty-title', { text: title }),
@@ -126,6 +151,8 @@ Havak.ui = (function () {
     since: since,
     toast: toast,
     avatar: avatar,
+    loading: loading,
+    errorState: errorState,
     empty: empty,
     statusTag: statusTag,
     STATUS: STATUS

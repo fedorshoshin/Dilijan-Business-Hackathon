@@ -49,10 +49,14 @@ Havak.views = Havak.views || {};
       novalidate: true,
       onsubmit: function (ev) {
         ev.preventDefault();
-        var result = auth.logIn(email.input.value, pass.input.value);
-        if (!result.ok) { showError(errBox, inputs, result); return; }
-        Havak.ui.toast('Welcome back, ' + result.user.name.split(' ')[0]);
-        Havak.router.resume();
+        var btn = form.querySelector('button[type=submit]');
+        btn.disabled = true;
+        auth.logIn(email.input.value, pass.input.value).then(function (result) {
+          btn.disabled = false;
+          if (!result.ok) { showError(errBox, inputs, result); return; }
+          Havak.ui.toast('Welcome back, ' + result.user.name.split(' ')[0]);
+          Havak.router.resume();
+        });
       }
     }, [
       email.wrap,
@@ -61,19 +65,23 @@ Havak.views = Havak.views || {};
       el('button.btn.btn-primary.btn-block', { type: 'submit', text: 'Log in' })
     ]);
 
-    var demos = el('div.demo-row', null, auth.demoAccounts().map(function (d) {
-      return el('button.demo-chip', {
-        type: 'button',
-        onclick: function () {
-          auth.logInAs(d.user.id);
-          Havak.ui.toast('Signed in as ' + d.user.name);
-          Havak.router.resume();
-        }
-      }, [
-        el('strong', { text: d.user.name.split(' ')[0] }),
-        el('small', { text: d.caption })
-      ]);
-    }));
+    var demos = el('div.demo-row');
+    var demosReady = auth.demoAccounts().then(function (list) {
+      list.forEach(function (d) {
+        demos.appendChild(el('button.demo-chip', {
+          type: 'button',
+          onclick: function () {
+            auth.logInAs(d.user.id).then(function () {
+              Havak.ui.toast('Signed in as ' + d.user.name);
+              Havak.router.resume();
+            });
+          }
+        }, [
+          el('strong', { text: d.user.name.split(' ')[0] }),
+          el('small', { text: d.caption })
+        ]));
+      });
+    });
 
     screen.appendChild(el('div.auth-wrap', null, [
       brand('Report it, clean it, fund it — for Dilijan.'),
@@ -91,6 +99,8 @@ Havak.views = Havak.views || {};
         demos
       ])
     ]));
+
+    return demosReady;
   };
 
   /* ---------- sign up ---------- */
@@ -127,17 +137,21 @@ Havak.views = Havak.views || {};
       novalidate: true,
       onsubmit: function (ev) {
         ev.preventDefault();
+        var btn = form.querySelector('button[type=submit]');
+        btn.disabled = true;
         var roles = Object.keys(boxes).filter(function (k) { return boxes[k].checked; });
-        var result = auth.signUp({
+        auth.signUp({
           name: name.input.value,
           email: email.input.value,
           pass: pass.input.value,
           place: place.input.value,
           roles: roles
+        }).then(function (result) {
+          btn.disabled = false;
+          if (!result.ok) { showError(errBox, inputs, result); return; }
+          Havak.ui.toast('Welcome to Havak, ' + result.user.name.split(' ')[0]);
+          Havak.router.resume();
         });
-        if (!result.ok) { showError(errBox, inputs, result); return; }
-        Havak.ui.toast('Welcome to Havak, ' + result.user.name.split(' ')[0]);
-        Havak.router.resume();
       }
     }, [
       name.wrap,

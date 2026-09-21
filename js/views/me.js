@@ -13,19 +13,27 @@ Havak.views = Havak.views || {};
 
   /* counts that are true today — the real dashboards land in later phases */
   function tally(user) {
-    var mine = store.where('reports', function (r) { return r.reporterId === user.id; });
-    var myClaims = store.where('claims', function (c) { return c.cleanerId === user.id; });
-    var earned = store.where('alloc', function (a) { return a.cleanerId === user.id; })
-      .reduce(function (sum, a) { return sum + a.amount; }, 0);
-    var given = store.where('donations', function (d) { return d.donorId === user.id; })
-      .reduce(function (sum, d) { return sum + d.amount; }, 0);
-
-    return { reported: mine.length, cleaned: myClaims.length, earned: earned, given: given };
+    return Promise.all([
+      store.where('reports',   function (r) { return r.reporterId === user.id; }),
+      store.where('claims',    function (c) { return c.cleanerId === user.id; }),
+      store.where('alloc',     function (a) { return a.cleanerId === user.id; }),
+      store.where('donations', function (d) { return d.donorId === user.id; })
+    ]).then(function (r) {
+      var sum = function (rows, key) {
+        return rows.reduce(function (n, row) { return n + row[key]; }, 0);
+      };
+      return {
+        reported: r[0].length,
+        cleaned: r[1].length,
+        earned: sum(r[2], 'amount'),
+        given: sum(r[3], 'amount')
+      };
+    });
   }
 
   Havak.views.me = function (screen) {
     var user = auth.current();
-    var t = tally(user);
+    return tally(user).then(function (t) {
 
     /* --- identity --- */
     var head = el('div.me-head', null, [
@@ -58,15 +66,19 @@ Havak.views = Havak.views || {};
         type: 'checkbox',
         checked: on ? true : null,
         onchange: function () {
-          var ok = auth.setRole(role.key, box.checked);
-          if (!ok) {
-            box.checked = true;
-            ui.toast('Keep at least one role — an account needs something to do.');
-            return;
-          }
-          Havak.shell.syncTabs();
-          ui.toast(box.checked ? role.label + ' turned on' : role.label + ' turned off');
-          Havak.router.render();
+          var wanted = box.checked;
+          box.disabled = true;
+          auth.setRole(role.key, wanted).then(function (ok) {
+            box.disabled = false;
+            if (!ok) {
+              box.checked = true;
+              ui.toast('Keep at least one role — an account needs something to do.');
+              return;
+            }
+            Havak.shell.syncTabs();
+            ui.toast(wanted ? role.label + ' turned on' : role.label + ' turned off');
+            Havak.router.render();
+          });
         }
       });
       return el('label.choice', null, [
@@ -93,10 +105,11 @@ Havak.views = Havak.views || {};
         type: 'button',
         text: 'Log out',
         onclick: function () {
-          auth.logOut();
-          Havak.shell.syncTabs();
-          ui.toast('Logged out');
-          Havak.router.go('/login', true);
+          auth.logOut().then(function () {
+            Havak.shell.syncTabs();
+            ui.toast('Logged out');
+            Havak.router.go('/login', true);
+          });
         }
       }),
       el('button.linkbtn.linkbtn-danger', {
@@ -104,10 +117,13 @@ Havak.views = Havak.views || {};
         text: 'Reset the demo data',
         onclick: function () {
           if (!window.confirm('Reset every account, report and donation back to the starting data?')) return;
-          store.reset();
-          Havak.shell.syncTabs();
-          Havak.router.go('/login', true);
-          ui.toast('Demo reset');
+          store.reset()
+            .then(function () { return auth.init(); })
+            .then(function () {
+              Havak.shell.syncTabs();
+              Havak.router.go('/login', true);
+              ui.toast('Demo reset');
+            });
         }
       }),
       el('p.notice.notice-plain', {
@@ -122,5 +138,6 @@ Havak.views = Havak.views || {};
       roles,
       actions
     ]));
+    });
   };
 })();

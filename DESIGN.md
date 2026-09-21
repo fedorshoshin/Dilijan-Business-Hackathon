@@ -96,7 +96,7 @@ sw.js                  service worker: offline cache of shell + assets
 icons/                 192/512 px PWA icons, maskable variants
 style.css              one stylesheet, existing tokens, extended
 js/store.js            the ONLY data layer the views know about (async)
-js/api.js              Supabase client — swapped in behind store.js at Phase 3.5
+js/api.js              backend client — swapped in behind store.js at Phase 3.5
 js/sync.js             offline write queue + replay on reconnect (5.4)
 js/media.js            blob put/get — IndexedDB, then the storage bucket
 js/auth.js             signup / login / logout / session / route guard
@@ -270,20 +270,26 @@ The compromise is one small task now and a cutover in the middle:
    the real shared backend, so the hardest flows are proven across two phones
    rather than simulated on one.
 
-### 5.6 What this needs from you
+### 5.6 Who builds which half
 
-I cannot create the Supabase project. It needs an account, a project, and its
-URL plus `anon` key — and my sandbox may not be able to reach the API to test
-against it. So:
+**Decided 2026-09-21: you build and host the server; I build the client against
+it.** I cannot create or host the backend from here, and you would rather own
+the infrastructure, so the split is clean.
 
-- Someone creates the Supabase project and sends me the URL and `anon` key.
-  The `anon` key is safe to share and safe to commit; the `service_role` key is
-  **not** and must never enter this repo.
-- If network access from here is blocked, I write the schema, the RLS policies
-  and the client layer, and they are applied and tested by someone who can reach
-  the dashboard.
+The risk with any such split is that each side builds to its own assumptions and
+the mismatch only surfaces at integration. **`BACKEND.md` is the contract that
+prevents that** — table shapes, the invariants the database must enforce, the
+two operations that cannot live in the client, the error shape, and what the
+offline queue will do to your API. If you disagree with anything in it, change
+that file and tell me; that is far cheaper than discovering it during the
+cutover.
 
-*This is open decision #6, and it blocks Phase 3.5.*
+What I still need from you before writing `api.js`: the base URL, the public
+key, and whether this is Supabase or your own server. The `service_role` key or
+any other secret must never enter this repo — the frontend is static, so
+anything it holds is readable by anyone.
+
+*Open decision #6.*
 
 ---
 
@@ -343,7 +349,7 @@ Shown to the cleaner *before* they claim, so the offer is honest.
 Ordered so each phase is demoable on its own and nothing is built before the
 thing it depends on. `Done when:` is the check to run before ticking it.
 
-**Progress: Phases 0 and 1 are built and verified** (2026-09-21). 26 automated
+**Progress: Phases 0, 1 and 1.5 are built and verified** (2026-09-21). 26 automated
 checks drive a real Chromium at 390×844 and cover every "done when" below for
 those two phases — guard, session, role toggles, offline launch, corrupt-storage
 fallback, tap targets, no sideways scroll.
@@ -381,9 +387,9 @@ this after Phase 6 would mean rewriting every view.
 
 | # | Task | Done when |
 | --- | --- | --- |
-| 1.5.1 | `store.js` read/write methods return Promises | Existing screens work unchanged through the async API |
-| 1.5.2 | Loading and error states in the shared component set | Every screen can show "loading" and "that failed" without inventing its own |
-| 1.5.3 | Re-run the Phase 0–1 check suite | All 26 checks still pass |
+| 1.5.1 ✅ | `store.js` read/write methods return Promises | Existing screens work unchanged through the async API |
+| 1.5.2 ✅ | Loading and error states in the shared component set | Every screen can show "loading" and "that failed" without inventing its own |
+| 1.5.3 ✅ | Re-run the Phase 0–1 check suite | All 26 checks still pass |
 
 ### Phase 2 — Reporter: the report itself
 
@@ -536,9 +542,10 @@ layer.
 4. **Who pays cleaners: money or points?** The task list says money, so money it
    is; confirm that is the real intent for Dilijan and not a hackathon artifact.
 5. **Certificate** — keep, drop, or rebuild on the new account model (section 11).
-6. **Supabase project and keys** — someone must create the project and send the
-   URL and `anon` key. The `service_role` key must never enter this repo.
-   *Blocks Phase 3.5.* (5.6)
+6. **Which backend, and its connection details** — you are building the server
+   (5.6). I need the base URL, the public key, and whether it is Supabase or
+   your own service before writing `api.js`. Everything else is agreed in
+   `BACKEND.md`. *Blocks Phase 3.5.*
 7. **Who is liable for the pilot's data?** Real names, photos and locations of
    real people, on a real server. Someone has to own deletion requests and a
    privacy note. Not a coding task, but it blocks going live with real users.

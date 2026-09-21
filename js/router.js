@@ -18,6 +18,7 @@ Havak.router = (function () {
   var afterEach = null;
   var returnTo = null;     // where to go back to once login succeeds
   var currentPath = null;
+  var renderToken = 0;     // discards results of renders the user navigated away from
 
   function define(path, config) {
     routes[path] = config;
@@ -77,11 +78,38 @@ Havak.router = (function () {
     screen.className = 'screen' + (forward ? ' screen-in' : '');
     screen.setAttribute('data-route', at.path);
 
-    route.view(screen, at.param);
-
     mount.innerHTML = '';
     mount.appendChild(screen);
     mount.scrollTop = 0;
+
+    /* Views may be async (they read through the store, which will be a network
+       call after Phase 3.5). Each render takes a token so a slow screen that
+       resolves after the user has already navigated away is discarded instead
+       of painting over the screen they are now looking at. */
+    renderToken += 1;
+    var token = renderToken;
+    var out;
+
+    try {
+      out = route.view(screen, at.param);
+    } catch (err) {
+      screen.appendChild(Havak.ui.errorState(err, render));
+      if (afterEach) afterEach(at.path, user);
+      return;
+    }
+
+    if (out && typeof out.then === 'function') {
+      var spinner = Havak.ui.loading();
+      screen.appendChild(spinner);
+      out.then(function () {
+        if (token !== renderToken) return;
+        spinner.remove();
+      }).catch(function (err) {
+        if (token !== renderToken) return;
+        spinner.remove();
+        screen.appendChild(Havak.ui.errorState(err, render));
+      });
+    }
 
     if (afterEach) afterEach(at.path, user);
   }
