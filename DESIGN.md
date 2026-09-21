@@ -1,6 +1,6 @@
 # Havak MVP — Design Doc
 
-**Status:** draft for review · **Date:** 2026-09-20
+**Status:** in build · **Date:** 2026-09-21 · **Target:** pilot with real users
 **Context:** 3rd place at the Dilijan Business Hackathon; invited to build a real MVP.
 **Target:** a mobile app — installable on a phone, offline-capable, built so it
 can be wrapped for the App Store and Play Store without rewriting it.
@@ -59,8 +59,7 @@ For an investor demo and for real Dilijan pilot users, that is an app.
 **Being straight about the two gaps:**
 
 1. **No store listing yet.** No "download on the App Store" badge until we do
-   route B. If the funder expects a store link, say so now — it's open
-   decision #1.
+   route B. Agreed as fine for this milestone; B-lite reopens it cheaply.
 2. **iOS storage eviction.** Safari clears data for *uninstalled* web apps after
    ~7 days of no use. Once the user adds it to the home screen this stops. So
    the install prompt isn't polish, it's a data-retention feature — which is why
@@ -73,15 +72,16 @@ For an investor demo and for real Dilijan pilot users, that is an app.
 | Constraint | Consequence |
 | --- | --- |
 | **Phone first, always** | Every screen designed at 390 px. Desktop is the afterthought, not the reverse. |
-| Published as **static files**, no server | No Node, no DB, no hosted API. All state is on-device. |
+| Published as **static files**, no server *we* host | No Node process, no build step. The frontend is static; it calls a hosted backend (section 5) over HTTPS. |
 | `index.html` must stay the homepage | Root becomes the install/landing page; the app lives behind it. |
-| localStorage caps at ~5 MB | Structured data only. **Media goes to IndexedDB** (hundreds of MB). |
+| **Any API key we ship is public** | Security lives in database policies, not in hiding keys. See 5.3. |
+| localStorage caps at ~5 MB | Structured data only. **Media goes to a storage bucket**, cached in IndexedDB. |
 | Payment processing out of scope | Donations are simulated end to end. The *ledger* is real; the card charge is not. |
-| No shared backend | Multi-user is simulated on one device via seeded accounts. Say so on screen, once, plainly. |
 
-**What a real backend would add, in one sentence:** accounts and reports shared
-between actual phones, plus a payment processor and push notifications —
-everything else in this doc works without one.
+**The one thing still genuinely missing:** payment processing. Money moves in
+the ledger, so every screen is truthful about who is owed what, but no card is
+charged and no cleaner is actually paid out. That needs a payment provider and
+a legal entity to receive funds — a business decision, not a technical one.
 
 ---
 
@@ -94,13 +94,19 @@ manifest.webmanifest   name, icons, theme colour, display:standalone
 sw.js                  service worker: offline cache of shell + assets
 icons/                 192/512 px PWA icons, maskable variants
 style.css              one stylesheet, existing tokens, extended
-js/store.js            localStorage read/write + migrations + seed
-js/media.js            IndexedDB blobs (photos, videos, thumbnails)
+js/store.js            the ONLY data layer the views know about (async)
+js/api.js              Supabase client — swapped in behind store.js at Phase 3.5
+js/sync.js             offline write queue + replay on reconnect (5.4)
+js/media.js            blob put/get — IndexedDB, then the storage bucket
 js/auth.js             signup / login / logout / session / route guard
 js/router.js           hash router  (#/feed #/report #/board #/give #/me)
-js/money.js            the allocation ledger (section 6.2)
+js/money.js            the allocation ledger (section 7.2)
 js/views/*.js          one file per screen
 ```
+
+**`store.js` is the seam.** No view file ever touches `localStorage`, Supabase
+or IndexedDB directly. That is what makes the Phase 3.5 cutover a one-file
+change instead of a rewrite.
 
 Plain scripts in IIFEs under a small `Havak.*` namespace — matching the existing
 `app.js` style. No build step, because a build step cannot run at serve time.
@@ -128,7 +134,10 @@ site on my phone" and "an app".
 - **Offline-first**: the shell loads with no network; writes are local anyway.
 - **Optimistic feedback**: every tap responds inside 100 ms, even mid-save.
 
-### 4.2 Data model (localStorage, one key `havak-mvp-v1`)
+### 4.2 Data model
+
+Five collections. Today they are arrays under one localStorage key
+(`havak-mvp-v1`); from Phase 3.5 they are Postgres tables with the same shape.
 
 ```js
 users:    [{ id, name, email, pass, roles:[], place, joinedAt, avatarSeed }]
@@ -168,7 +177,116 @@ its own idea of state.
 
 ---
 
-## 5. App navigation
+## 5. The backend (pilot requirement)
+
+**Decided 2026-09-21: this milestone is a pilot, not a demo.** Real Dilijan
+reporters and cleaners install it on their own phones and must see each other's
+work. That makes a shared backend mandatory, not optional.
+
+### 5.1 What changes, and what does not
+
+The five collections in 4.2 stay exactly as they are. They become Postgres
+tables instead of arrays in localStorage. Nothing about the report lifecycle,
+the roles, or the money ledger changes.
+
+Two seams were built for precisely this swap:
+
+- **No view touches storage.** Every read and write goes through `store.js`, so
+  the backend swap is one file, not thirty.
+- **Reports hold `media: [mediaId]`, never image bytes.** Keys here, blobs
+  elsewhere. That is already the S3 shape — we only change which bucket the
+  keys point into.
+
+### 5.2 Supabase, and why
+
+Postgres, authentication and blob storage in one service, with a JS client that
+works from a static page with **no build step** — which we require, because we
+have no build step. Free tier covers a Dilijan pilot comfortably.
+
+| Concern | Today | Pilot |
+| --- | --- | --- |
+| Users | localStorage, plain-text passwords | Supabase Auth, properly hashed |
+| The five collections | localStorage arrays | Postgres tables |
+| Photos and video | IndexedDB on the phone | Storage bucket; keys in the row |
+| Two phones see each other | ❌ | ✅ |
+
+### 5.3 The static-frontend security problem — read this one
+
+A static app's API key is visible to anyone who opens the page source. This is
+not a Supabase flaw; it is what "no server" means. Supabase is designed for it:
+the `anon` key is *meant* to be public, and safety comes entirely from **Row
+Level Security** policies enforced inside Postgres.
+
+**Get RLS wrong and the database is world-readable and world-writable.** The
+policies are the security model, so they are a deliverable with their own tests,
+not a checkbox:
+
+| Table | Who may read | Who may write |
+| --- | --- | --- |
+| `users` | own row + public profile fields of others | own row only |
+| `reports` | any signed-in user | reporter owns it; only the claiming cleaner may set `cleaned`; only the reporter may set `confirmed` |
+| `claims` | any signed-in user | cleaner creates own; **only if the report is still `open`** |
+| `donations` | own rows only | own rows only, never editable after insert |
+| `alloc` | donor of the donation, and the paid cleaner | server-side only, never the client |
+
+Two of these carry real money logic and **cannot be trusted to the client**:
+claiming a report (two cleaners must not claim the same spot) and writing
+allocations. Both become Postgres functions with `security definer`, so the
+rules live in the database where the client cannot route around them.
+
+### 5.4 Offline, which is the genuinely hard part
+
+Today offline is trivial: the phone *is* the database. Once truth lives on a
+server, "works in a forest with no signal" means queuing writes and resolving
+conflicts on reconnect. This is more work than the backend wiring itself.
+
+Scoped honestly for a pilot:
+
+- **Reads** — cache the last sync in IndexedDB, show it with an "offline" mark.
+- **Writes** — queue locally and replay on reconnect. A report written with no
+  signal appears in the app straight away, marked *pending*, and syncs later.
+- **Conflicts** — one real case: two cleaners claim the same report while one is
+  offline. The database decides (the claim function is atomic) and the loser is
+  told plainly, rather than silently losing their work.
+
+Everything else is single-writer, so last-write-wins is honest and sufficient.
+
+### 5.5 Where it lands in the build
+
+**Not last.** Leaving auth, RLS and sync to the end is how pilots slip. But not
+first either: building six phases of UI against a remote database slows every
+one of them.
+
+The compromise is one small task now and a cutover in the middle:
+
+1. **Phase 1.5 — make the seam async.** `store.js` keeps its localStorage guts
+   but returns Promises. Views get written against the async shape from the
+   start, so the cutover later changes one file rather than every screen. This
+   is cheap today and expensive to retrofit after Phase 6.
+2. **Phases 2 and 3** — report form and media, built locally and fast.
+3. **Phase 3.5 — the cutover.** Supabase auth, tables, RLS, storage, sync.
+4. **Phases 4, 5, 6** — board, confirmation and donations built directly against
+   the real shared backend, so the hardest flows are proven across two phones
+   rather than simulated on one.
+
+### 5.6 What this needs from you
+
+I cannot create the Supabase project. It needs an account, a project, and its
+URL plus `anon` key — and my sandbox may not be able to reach the API to test
+against it. So:
+
+- Someone creates the Supabase project and sends me the URL and `anon` key.
+  The `anon` key is safe to share and safe to commit; the `service_role` key is
+  **not** and must never enter this repo.
+- If network access from here is blocked, I write the schema, the RLS policies
+  and the client layer, and they are applied and tested by someone who can reach
+  the dashboard.
+
+*This is open decision #6, and it blocks Phase 3.5.*
+
+---
+
+## 6. App navigation
 
 Bottom tabs, and which of them you see depends on your roles:
 
@@ -185,9 +303,9 @@ role toggles in **Me** add and remove tabs live.
 
 ---
 
-## 6. Two decisions worth getting right
+## 7. Two decisions worth getting right
 
-### 6.1 Roles are additive, not exclusive
+### 7.1 Roles are additive, not exclusive
 
 A Dilijan resident reports a dump on Tuesday, joins a cleanup on Saturday, and
 donates on payday. One account, `roles: ['reporter','cleaner','donor']`, with
@@ -197,7 +315,7 @@ one; the profile can change it later.
 **Decided 2026-09-21: multi-role.** One account holds any combination of the
 three. Each role is a separate flow, and the same person can be in all three.
 
-### 6.2 The money ledger is what makes the donor dashboard honest
+### 7.2 The money ledger is what makes the donor dashboard honest
 
 Most demos fake "what was my money spent on?" with a pie chart. We can do the
 real thing cheaply:
@@ -219,7 +337,7 @@ Shown to the cleaner *before* they claim, so the offer is honest.
 
 ---
 
-## 7. Task breakdown
+## 8. Task breakdown
 
 Ordered so each phase is demoable on its own and nothing is built before the
 thing it depends on. `Done when:` is the check to run before ticking it.
@@ -252,7 +370,19 @@ fallback, tap targets, no sideways scroll.
 | 1.3 ✅ | Route guard | Opening `#/board` signed out bounces to login, then returns there after |
 | 1.4 ✅ | Profile: avatar, name, place, roles, member-since, role toggles | Toggling a role adds/removes its tab live |
 | 1.5 ✅ | One-tap demo logins (donor / reporter / cleaner) | A judge reaches any role in one tap |
-| 1.6 ✅ | Honest note: "demo accounts, passwords are not secure" | Visible once on sign-up, not nagging |
+| 1.6 ✅ | Honest note: "demo accounts, passwords are not secure" | Visible once on sign-up, not nagging. **Removed at Phase 3.5**, when it stops being true |
+
+### Phase 1.5 — Make the seam async *(small, and expensive to skip)*
+
+`store.js` keeps its localStorage guts but starts returning Promises, so every
+screen from Phase 2 on is written against the shape the backend will need. Doing
+this after Phase 6 would mean rewriting every view.
+
+| # | Task | Done when |
+| --- | --- | --- |
+| 1.5.1 | `store.js` read/write methods return Promises | Existing screens work unchanged through the async API |
+| 1.5.2 | Loading and error states in the shared component set | Every screen can show "loading" and "that failed" without inventing its own |
+| 1.5.3 | Re-run the Phase 0–1 check suite | All 26 checks still pass |
 
 ### Phase 2 — Reporter: the report itself
 
@@ -274,6 +404,22 @@ fallback, tap targets, no sideways scroll.
 | 3.4 | Downscale photos before storing; cap count and total size | Quota errors surface as a clear message, never a silent loss |
 | 3.5 | Before/after gallery on the report detail, swipeable | Swipes with a thumb on a real phone |
 
+### Phase 3.5 — Backend cutover *(the pilot phase; blocked on decision #6)*
+
+Everything after this is built against the real shared backend, so the hardest
+flows are proven across two phones rather than simulated on one.
+
+| # | Task | Done when |
+| --- | --- | --- |
+| 3.5.1 | Supabase project, schema for the five tables, migrations checked into the repo | Schema recreatable from the repo alone |
+| 3.5.2 | **RLS policies for every table** (5.3) | A signed-in user provably cannot read or write another user's rows |
+| 3.5.3 | `claim_report()` and `allocate_payout()` as `security definer` functions | Two cleaners racing for one report: exactly one wins |
+| 3.5.4 | Swap `auth.js` to Supabase Auth; migrate the demo accounts | Passwords hashed server-side; existing flows unchanged |
+| 3.5.5 | Swap `store.js` internals to `api.js` | No view file changes |
+| 3.5.6 | Media moves to a storage bucket; rows keep the keys | Photo taken on phone A is visible on phone B |
+| 3.5.7 | `sync.js` — offline write queue and replay (5.4) | Report written offline appears for others on reconnect |
+| 3.5.8 | Two-device test | Report on A appears on B; B claims it; it leaves A's board |
+
 ### Phase 4 — Cleaner: board and work
 
 | # | Task | Done when |
@@ -291,7 +437,7 @@ fallback, tap targets, no sideways scroll.
 | --- | --- | --- |
 | 5.1 | Reporter sees their spot has been cleaned | Badge on the Me tab and the reporter dashboard |
 | 5.2 | Confirm screen: before/after side by side, **rate cleanliness 1–5** | Rating stored on the report |
-| 5.3 | Confirmation triggers payout allocation (6.2) | `alloc` rows written; cleaner's earnings rise |
+| 5.3 | Confirmation triggers payout allocation (7.2) | `alloc` rows written; cleaner's earnings rise |
 | 5.4 | Dispute path: rating 1–2 → flagged, not auto-paid | Report goes to `cleaned` + `disputed`, visible to both |
 
 ### Phase 6 — Donor
@@ -315,7 +461,7 @@ fallback, tap targets, no sideways scroll.
 | 7.5 | Full E2E walkthrough of all three roles, written down | Each of the three flows completes start to finish |
 | 7.6 | Accessibility: contrast, labels, focus order, reduced motion | Keyboard and screen-reader run through each flow works |
 
-### Phase 8 — Store build *(only if open decision #1 says yes)*
+### Phase 8 — Store build *(parked: not needed for this milestone)*
 
 | # | Task | Done when |
 | --- | --- | --- |
@@ -328,11 +474,12 @@ fallback, tap targets, no sideways scroll.
 
 ---
 
-## 8. Definition of done for the MVP
+## 9. Definition of done for the MVP
 
-The app is **installed on a real phone from a link**, launches full-screen with
-no address bar, opens with no signal — and three strangers can each complete a
-flow on it:
+The app is **installed on real phones from a link**, launches full-screen with
+no address bar, and opens with no signal. Because this is a pilot, the flows
+must work **across separate devices** — a report made on one phone appears on
+another person's board:
 
 1. **Reporter** signs up → photographs a hazardous spot → sets level 4 and a
    90-minute estimate → watches it get claimed → confirms it clean → rates 4/5.
@@ -342,37 +489,55 @@ flow on it:
 3. **Donor** signs in → gives to the general pot and to one specific cleanup →
    opens their dashboard → sees exactly which cleanups their money paid for.
 
+And two checks that only a pilot needs:
+
+4. **Two phones, one town.** A report made on phone A is on phone B's board
+   within a refresh. When B claims it, it leaves A's board.
+5. **No signal.** A report written in a forest with no bars is saved, marked
+   pending, and appears for everyone else once signal returns.
+
 ---
 
-## 9. Out of scope (stated so it is not a surprise)
+## 10. Out of scope (stated so it is not a surprise)
 
 - Real payment processing, payouts, KYC, tax receipts.
-- A shared backend: two real phones do not see each other's data.
 - Push notifications, email, SMS *(push arrives with Phase 8)*.
+- Real-time updates: the board refreshes on open and on pull, not by live socket.
 - Moderation tooling, admin/municipality role.
 - Armenian translation of the app UI *(landing keeps its bilingual touches)*.
 
-## 10. Parked from the hackathon build
+## 11. Parked from the hackathon build
 
 Eco-points, the voting wheel, the funding cloud and the PDF certificate are not
 in the MVP list. They stay in the repo and on the landing page, but no MVP task
 depends on them. Decide after Phase 7 whether points return as the retention
 layer.
 
-## 11. Decisions
+## 12. Decisions
 
 ### Settled (2026-09-21)
+
+0. **This is a pilot, not a demo.** Real users on their own phones, all core
+   features actually working. Consequences: a shared backend is mandatory
+   (section 5), passwords must be hashed server-side, and the definition of
+   done now spans two devices.
 
 1. **Format: PWA.** ✅ No store listing needed for this milestone. Phase 8 is
    parked, not cancelled — the TWA route to the Play Store stays available for
    ~$25 and a day's work whenever a store badge is wanted.
 2. **Multi-role accounts.** ✅ One account holds any combination of donor,
    reporter and cleaner. Tabs are driven by roles and change live when roles are
-   toggled (6.1, task 1.4).
+   toggled (7.1, task 1.4).
 
 ### Still open
 
-3. **Payout formula** — default in 6.2. *Blocks Phase 5.*
+3. **Payout formula** — default in 7.2. *Blocks Phase 5.*
 4. **Who pays cleaners: money or points?** The task list says money, so money it
    is; confirm that is the real intent for Dilijan and not a hackathon artifact.
-5. **Certificate** — keep, drop, or rebuild on the new account model (section 10).
+5. **Certificate** — keep, drop, or rebuild on the new account model (section 11).
+6. **Supabase project and keys** — someone must create the project and send the
+   URL and `anon` key. The `service_role` key must never enter this repo.
+   *Blocks Phase 3.5.* (5.6)
+7. **Who is liable for the pilot's data?** Real names, photos and locations of
+   real people, on a real server. Someone has to own deletion requests and a
+   privacy note. Not a coding task, but it blocks going live with real users.
