@@ -101,7 +101,9 @@ js/sync.js             offline write queue + replay on reconnect (5.4)
 js/media.js            blob put/get — IndexedDB, then the storage bucket
 js/auth.js             signup / login / logout / session / route guard
 js/router.js           hash router  (#/feed #/report #/board #/give #/me)
-js/money.js            the allocation ledger (section 7.2)
+js/geo.js              real coordinates <-> positions on the drawn map
+js/map.js              the Dilijan map: pins, tap-to-place
+js/money.js            the payout formula, and later the allocation ledger (7.2)
 js/views/*.js          one file per screen
 ```
 
@@ -145,7 +147,8 @@ users:    [{ id, name, email, pass, roles:[], place, joinedAt, avatarSeed }]
 session:  { userId } | null
 
 reports:  [{ id, reporterId, title, desc,
-             loc:{ x, y, label },      // % coords on the map + human label
+             loc:{ lat, lng, x, y, label },   // real position; x/y derived for the
+                                       //   drawn map; label for a human
              level: 1..5,              // how bad it is
              hazardous: bool,          // chemicals, sharps, asbestos…
              estMinutes: int,          // reporter's estimate
@@ -349,10 +352,11 @@ Shown to the cleaner *before* they claim, so the offer is honest.
 Ordered so each phase is demoable on its own and nothing is built before the
 thing it depends on. `Done when:` is the check to run before ticking it.
 
-**Progress: Phases 0, 1 and 1.5 are built and verified** (2026-09-21). 26 automated
-checks drive a real Chromium at 390×844 and cover every "done when" below for
-those two phases — guard, session, role toggles, offline launch, corrupt-storage
-fallback, tap targets, no sideways scroll.
+**Progress: Phases 0, 1, 1.5 and 2 are built and verified** (2026-09-21). 51 automated checks
+drive a real Chromium at 390×844 and cover every "done when" below for those
+phases — guard, session, role toggles, offline launch, corrupt-storage fallback,
+report validation, map placement, hazard path, payout arithmetic, cross-role
+detail views, tap targets, no sideways scroll.
 
 ### Phase 0 — Foundations + app shell *(no visible feature; everything rests on it)*
 
@@ -395,11 +399,11 @@ this after Phase 6 would mean rewriting every view.
 
 | # | Task | Done when |
 | --- | --- | --- |
-| 2.1 | Report form: title, description, **pollution level 1–5**, **hazardous flag**, **estimated cleanup time** | All five fields validate and save |
-| 2.2 | Location: tap the map to place a pin + text label; offer **device GPS** with manual fallback | Pin persists; denying location permission still allows a report |
-| 2.3 | Hazard path: flagging hazardous shows a "do not touch it yourself" warning | Warning appears; report marked for official handling |
-| 2.4 | Reporter dashboard: my reports + live status of each | Statuses match the lifecycle in 4.3 |
-| 2.5 | Report detail screen, shared by all three roles | Same route works signed in as any role |
+| 2.1 ✅ | Report form: title, description, **pollution level 1–5**, **hazardous flag**, **estimated cleanup time** | All five fields validate and save |
+| 2.2 ✅ | Location: tap the map to place a pin + text label; offer **device GPS** with manual fallback | Pin persists; denying location permission still allows a report |
+| 2.3 ✅ | Hazard path: flagging hazardous shows a "do not touch it yourself" warning | Warning appears; report marked for official handling |
+| 2.4 ✅ | Reporter dashboard: my reports + live status of each | Statuses match the lifecycle in 4.3 |
+| 2.5 ✅ | Report detail screen, shared by all three roles | Same route works signed in as any role |
 
 ### Phase 3 — Camera and media *(riskiest piece; isolate it)*
 

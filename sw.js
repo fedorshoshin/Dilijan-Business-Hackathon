@@ -7,18 +7,24 @@
    the cache from the network in the background for next time. Bump CACHE when
    the shell changes — the old cache is dropped on activate. */
 
-var CACHE = 'havak-shell-v1';
+var CACHE = 'havak-shell-v2';
 
 var SHELL = [
   'app.html',
   'style.css',
   'manifest.webmanifest',
+  'js/geo.js',
   'js/store.js',
+  'js/money.js',
+  'js/map.js',
   'js/auth.js',
   'js/ui.js',
   'js/router.js',
   'js/views/auth.js',
   'js/views/feed.js',
+  'js/views/newreport.js',
+  'js/views/myreports.js',
+  'js/views/spot.js',
   'js/views/me.js',
   'js/views/soon.js',
   'js/main.js',

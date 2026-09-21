@@ -1270,3 +1270,151 @@ body.app.no-tabs .toast { bottom: calc(var(--safe-b) + var(--s-5)); }
 @media (prefers-reduced-motion: reduce) {
   .spinner { animation-duration: 2.4s; }
 }
+
+/* ==========================================================================
+   Phase 2 — reporting
+   ========================================================================== */
+
+/* ---------- map ---------- */
+.map-shell { margin-top: var(--s-3); }
+.map.is-selectable { cursor: crosshair; }
+.map.is-selectable:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.map-hint-line {
+  font-size: var(--t-sm);
+  color: var(--muted);
+  text-align: center;
+  padding: var(--s-2) var(--s-3);
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+}
+.pin.is-hazard i { box-shadow: 0 0 0 3px var(--red-sf), 0 0 0 4px var(--red); }
+.pin.is-placing i { background: var(--green); box-shadow: 0 0 0 4px var(--green-sf); }
+.dot-check { background: var(--blue); }
+
+.legend { margin-top: var(--s-3); }
+
+/* ---------- report list ---------- */
+.rlist-top { margin-top: var(--s-4); }
+.rcard-tap {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: var(--r-md);
+  padding: var(--s-3) var(--s-4) var(--s-4);
+  transition: border-color var(--dur) var(--ease), background-color var(--dur) var(--ease);
+}
+.rcard-tap:hover { border-color: var(--line-green); background: var(--surface-2); }
+.rcard-tap:active { transform: scale(.995); }
+.rcard-tap.needs-you { border-color: var(--green); background: var(--green-sf); }
+.tag-you { color: var(--white); border-color: var(--green); background: var(--green); }
+
+/* ---------- segmented control (how bad) ---------- */
+.segmented { display: flex; gap: var(--s-2); }
+.seg {
+  flex: 1;
+  min-height: var(--touch);
+  font: inherit;
+  font-weight: 650;
+  font-size: var(--t-lg);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease),
+              border-color var(--dur) var(--ease);
+}
+.seg.is-on { background: var(--green); border-color: var(--green); color: var(--white); }
+
+/* ---------- chips (how long) ---------- */
+.chips { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.chip {
+  min-height: var(--touch);
+  padding: var(--s-2) var(--s-4);
+  font: inherit;
+  font-weight: 650;
+  font-size: var(--t-sm);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background-color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+.chip.is-on { background: var(--green); border-color: var(--green); color: var(--white); }
+
+.field-label { display: block; font-size: var(--t-sm); font-weight: 650; margin-bottom: var(--s-1); }
+
+/* ---------- hazard ---------- */
+.notice-danger {
+  background: var(--red-sf);
+  border-color: var(--line-red);
+  color: var(--red);
+}
+.notice-danger strong { color: var(--red); }
+.choice-danger:has(input:checked) { border-color: var(--red); background: var(--red-sf); }
+.choice-danger input { accent-color: var(--red); }
+
+/* ---------- payout ---------- */
+.payout {
+  margin-top: var(--s-4);
+  padding: var(--s-4);
+  border: 1px solid var(--line-green);
+  border-radius: var(--r-lg);
+  background: var(--green-sf);
+  text-align: center;
+}
+.payout-head { font-size: var(--t-sm); color: var(--green-dk); font-weight: 650; }
+.payout-value {
+  display: block;
+  font-size: var(--t-2xl);
+  line-height: 1.25;
+  color: var(--green-dk);
+  font-variant-numeric: tabular-nums;
+  margin-top: var(--s-1);
+}
+.payout-parts { font-size: var(--t-sm); color: var(--green-dk); margin-top: var(--s-2); }
+.payout-note { font-size: var(--t-sm); color: var(--muted); margin-top: var(--s-2); }
+
+/* ---------- one report ---------- */
+.spot-head { margin-bottom: var(--s-4); }
+.spot-title { font-size: var(--t-xl); margin-top: var(--s-2); }
+.spot-desc { margin-top: var(--s-4); max-width: 66ch; }
+.spot-where { margin-top: var(--s-3); font-weight: 650; }
+.spot-coords {
+  font-size: var(--t-sm);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  margin-top: var(--s-1);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-3);
+  margin: var(--s-5) 0 0;
+}
+.fact {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: var(--s-3);
+}
+.fact dt { font-size: var(--t-sm); color: var(--muted); }
+.fact dd { margin: var(--s-1) 0 0; font-weight: 650; }
+
+.next-up {
+  margin-top: var(--s-4);
+  padding: var(--s-4);
+  border-radius: var(--r-md);
+  background: var(--green-sf);
+  border: 1px solid var(--line-green);
+}
+.next-text { color: var(--green-dk); font-weight: 650; }
+
+form .panel:first-child { margin-top: var(--s-4); }

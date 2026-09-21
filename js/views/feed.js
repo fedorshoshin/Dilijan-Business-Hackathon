@@ -17,16 +17,21 @@ Havak.views = Havak.views || {};
   var ORDER = { open: 0, claimed: 1, cleaned: 2, confirmed: 3 };
 
   function card(report) {
-    var bits = [ui.minutes(report.estMinutes), 'level ' + report.level];
+    var bits = [ui.minutes(report.estMinutes), 'level ' + report.level, ui.amd(report.payout)];
 
-    return el('li.rcard', null, [
-      el('div.rcard-top', null, [
-        ui.statusTag(report.status),
-        report.hazardous ? el('span.tag.tag-hazard', { text: 'Hazardous' }) : null
-      ]),
-      el('h3.rcard-title', { text: report.title }),
-      el('p.rcard-where', { text: report.loc.label }),
-      el('p.rcard-meta', { text: bits.join(' · ') + ' · ' + ui.ago(report.createdAt) })
+    return el('li', null, [
+      el('button.rcard.rcard-tap', {
+        type: 'button',
+        onclick: function () { Havak.router.go('/spot/' + report.id); }
+      }, [
+        el('div.rcard-top', null, [
+          ui.statusTag(report.status),
+          report.hazardous ? el('span.tag.tag-hazard', { text: 'Hazardous' }) : null
+        ]),
+        el('h3.rcard-title', { text: report.title }),
+        el('p.rcard-where', { text: report.loc.label }),
+        el('p.rcard-meta', { text: bits.join(' · ') + ' · ' + ui.ago(report.createdAt) })
+      ])
     ]);
   }
 
@@ -45,12 +50,15 @@ Havak.views = Havak.views || {};
           el('h1', { text: 'Dilijan right now' }),
           el('p.sub', { text: open + ' spots waiting · ' + done + ' cleaned and confirmed' })
         ]),
+        Havak.map.render({
+          reports: reports,
+          onPinClick: function (id) { Havak.router.go('/spot/' + id); }
+        }),
+        Havak.map.legend(),
         reports.length
           ? el('ul.rlist', null, reports.map(card))
           : ui.empty('No spots reported yet', 'When someone reports one, it shows up here.'),
-        el('p.phase-note', {
-          text: 'The map, the photos and the full detail screen arrive in Phase 2.'
-        })
+        el('p.phase-note', { text: 'Photos arrive in Phase 3.' })
       ]));
     });
   };

@@ -156,7 +156,17 @@ Havak.shell = (function () {
     r.define('/login',  { view: Havak.views.login,  guestOnly: true });
     r.define('/signup', { view: Havak.views.signup, guestOnly: true });
     r.define('/feed',   { view: Havak.views.feed,   auth: true });
-    r.define('/report', { view: Havak.views.soon('report'), auth: true, role: 'reporter' });
+    r.define('/spot',   { view: Havak.views.spot,   auth: true });
+    r.define('/report', {
+      auth: true,
+      role: 'reporter',
+      /* one tab, two screens: the list, and the form behind /report/new */
+      view: function (screen, param) {
+        return param === 'new'
+          ? Havak.views.newReport(screen)
+          : Havak.views.myReports(screen);
+      }
+    });
     r.define('/jobs',   { view: Havak.views.soon('jobs'),   auth: true, role: 'cleaner' });
     r.define('/give',   { view: Havak.views.soon('give'),   auth: true, role: 'donor' });
     r.define('/me',     { view: Havak.views.me,     auth: true });

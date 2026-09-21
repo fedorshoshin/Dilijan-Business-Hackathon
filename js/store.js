@@ -152,6 +152,14 @@ Havak.store = (function () {
       { id: 'a-4', donationId: 'd-1', reportId: 'r-7', cleanerId: 'u-davit', amount: 2800, at: now - 17 * day }
     ];
 
+    /* the seeds carry map positions; fill in the real coordinates they stand
+       for, so seeded and user-made reports have the same shape */
+    reports.forEach(function (r) {
+      var real = Havak.geo.toLatLng(r.loc.x, r.loc.y);
+      r.loc.lat = real.lat;
+      r.loc.lng = real.lng;
+    });
+
     return {
       version: VERSION,
       session: null,
@@ -262,6 +270,9 @@ Havak.store = (function () {
     if (!Array.isArray(state[kind])) state[kind] = [];
     if (!record.id) record.id = id(kind.charAt(0));
     if (!record.createdAt) record.createdAt = Date.now();
+    /* the server uses this to ignore a replayed write after a lost reply
+       (BACKEND.md §8) — generated here so it survives the offline queue */
+    if (!record.clientId) record.clientId = id('c');
     state[kind].push(record);
     if (!save()) throw new StoreError('storage_quota', 'This device would not save that. Storage may be full.');
     return record;

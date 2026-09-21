@@ -13,16 +13,6 @@ Havak.views = Havak.views || {};
   var el = Havak.ui.el;
 
   var PLANNED = {
-    report: {
-      title: 'Report a spot',
-      phase: 'Phase 2 · Phase 3',
-      lines: [
-        'Tap the map or use your location to place a pin.',
-        'Pollution level 1–5, hazardous-waste flag, how long it will take.',
-        'Photos and video straight from the camera.',
-        'Then watch its status until someone cleans it.'
-      ]
-    },
     jobs: {
       title: 'Jobs board',
       phase: 'Phase 4',

@@ -51,8 +51,10 @@ reports (
   reporter_id  uuid not null references users(id),
   title        text not null,
   description  text not null,
-  loc_x        numeric not null,         -- 0-100, position on the town map
-  loc_y        numeric not null,
+  lat          numeric not null,         -- REAL position; what a cleaner navigates to
+  lng          numeric not null,
+  loc_x        numeric not null,         -- 0-100, where to draw it on the artwork
+  loc_y        numeric not null,          --   (derived from lat/lng, stored for speed)
   loc_label    text not null,            -- human readable place
   level        int  not null check (level between 1 and 5),
   hazardous    boolean not null default false,
@@ -131,6 +133,8 @@ hold in the database.
 6. A user may only edit **their own** `users` row, and may never edit `roles` of
    another user.
 7. `payout` is fixed when the report is created and never edited afterwards.
+8. `lat`/`lng` are the truth for a report's position; `loc_x`/`loc_y` are a
+   derived display convenience. If they ever disagree, lat/lng wins.
 
 ## 4. The two operations that cannot live in the client
 
@@ -237,3 +241,7 @@ offline. The database decides (§3.1) and the client tells the loser plainly.
 - **Are report photos public or signed?** Affects offline caching.
 - **Who owns deletion requests?** Real names, photos and GPS of real people.
   `DESIGN.md` open decision #7 — not a coding task, but it blocks going live.
+- **Do you want PostGIS?** The client sorts the cleaner's board by distance. It
+  can do that in JavaScript over a small result set, but if Dilijan grows past a
+  few hundred open reports, a `geography` column with a spatial index is the
+  right answer. Cheap to add now, awkward later.
