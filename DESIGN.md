@@ -40,7 +40,11 @@ Three routes exist. Only one of them ships this month.
 | --- | --- | --- | --- |
 | **A. PWA** — installable web app | Home-screen icon, own window with no browser chrome, splash screen, offline, camera, GPS, storage that survives | Builds and publishes today on our current hosting | **Build this now** |
 | **B. Capacitor wrapper** | Everything in A, plus a real `.ipa`/`.apk` in the App Store and Play Store, native camera, push | Same codebase, wrapped. Needs a Mac/build machine, Apple ($99/yr) + Google ($25) developer accounts, review cycles | **Build this next**, once we want store presence |
+| **B-lite. TWA** — PWA published to Play Store | Everything in A, plus a real Play Store listing and install count. Android only | Generated from the PWA by PWABuilder/Bubblewrap, **no code changes**. Google account ($25), about a day | **Cheapest store badge** if Android is enough |
 | **C. Native rewrite** (Swift / Kotlin / React Native) | Marginally smoother in places | Throws away the web app; two codebases; months | **No.** Nothing on the MVP list needs it |
+
+**Decided 2026-09-21: route A is the deliverable for this milestone.**
+No store listing required. B-lite stays on the shelf as the cheap option.
 
 **The plan: A now, B when you want store listings.** This is not a compromise —
 Capacitor *runs the exact PWA* inside a native shell. Every hour spent on Phase
@@ -190,8 +194,8 @@ donates on payday. One account, `roles: ['reporter','cleaner','donor']`, with
 tabs shown per role. Sign-up asks "what do you want to do?" and allows more than
 one; the profile can change it later.
 
-*Open question from our chat.* Default = multi-role. Strict single-role changes
-navigation everywhere, so decide before Phase 1 starts.
+**Decided 2026-09-21: multi-role.** One account holds any combination of the
+three. Each role is a separate flow, and the same person can be in all three.
 
 ### 6.2 The money ledger is what makes the donor dashboard honest
 
@@ -231,7 +235,7 @@ thing it depends on. `Done when:` is the check to run before ticking it.
 | 0.5 | **`sw.js` service worker — cache the shell and assets** | Aeroplane mode: the app still opens and navigates |
 | 0.6 | **Install prompt** on the landing page (+ iOS "tap Share → Add" hint) | A phone user installs without being told how |
 | 0.7 | **Safe-area insets + 390 px baseline + no-zoom viewport** | Nothing under the notch or home indicator; no sideways scroll |
-| 0.8 | Design tokens lifted into `:root`; shared sheet/toast/field/empty-state CSS | One class list, used by every later screen |
+| 0.8 | Complete the token set and enforce it; shared sheet/toast/field/empty-state CSS | No hex outside `:root`; no off-scale px; one class list used by every later screen |
 | 0.9 | Screen transitions — eased 200 ms slide, respects `prefers-reduced-motion` | Feels like an app, not a page load |
 
 ### Phase 1 — All users: accounts
@@ -350,12 +354,19 @@ in the MVP list. They stay in the repo and on the landing page, but no MVP task
 depends on them. Decide after Phase 7 whether points return as the retention
 layer.
 
-## 11. Open decisions
+## 11. Decisions
 
-1. **Do we need App Store / Play Store listings for this milestone,** or is an
-   installable PWA enough? Changes whether Phase 8 happens, and needs developer
-   accounts and a Mac. *Ask the funder before Phase 7.*
-2. **Single-role vs multi-role accounts** — default multi-role (6.1). *Blocks Phase 1.*
+### Settled (2026-09-21)
+
+1. **Format: PWA.** ✅ No store listing needed for this milestone. Phase 8 is
+   parked, not cancelled — the TWA route to the Play Store stays available for
+   ~$25 and a day's work whenever a store badge is wanted.
+2. **Multi-role accounts.** ✅ One account holds any combination of donor,
+   reporter and cleaner. Tabs are driven by roles and change live when roles are
+   toggled (6.1, task 1.4).
+
+### Still open
+
 3. **Payout formula** — default in 6.2. *Blocks Phase 5.*
 4. **Who pays cleaners: money or points?** The task list says money, so money it
    is; confirm that is the real intent for Dilijan and not a hackathon artifact.
