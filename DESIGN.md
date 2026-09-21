@@ -224,30 +224,35 @@ Shown to the cleaner *before* they claim, so the offer is honest.
 Ordered so each phase is demoable on its own and nothing is built before the
 thing it depends on. `Done when:` is the check to run before ticking it.
 
+**Progress: Phases 0 and 1 are built and verified** (2026-09-21). 26 automated
+checks drive a real Chromium at 390×844 and cover every "done when" below for
+those two phases — guard, session, role toggles, offline launch, corrupt-storage
+fallback, tap targets, no sideways scroll.
+
 ### Phase 0 — Foundations + app shell *(no visible feature; everything rests on it)*
 
 | # | Task | Done when |
 | --- | --- | --- |
-| 0.1 | `store.js`: load/save/migrate/reset over one localStorage key | Reload keeps data; corrupt JSON falls back to seed without a crash |
-| 0.2 | Seed data: 6 users, ~10 reports across all statuses, donation history | Fresh install shows a populated, believable town |
-| 0.3 | `app.html` shell + `router.js` + **bottom tab bar** | Tabs swap screens instantly; Android back button works |
-| 0.4 | **`manifest.webmanifest` + icons + `display:standalone`** | "Add to Home Screen" gives a full-screen app with no address bar |
-| 0.5 | **`sw.js` service worker — cache the shell and assets** | Aeroplane mode: the app still opens and navigates |
-| 0.6 | **Install prompt** on the landing page (+ iOS "tap Share → Add" hint) | A phone user installs without being told how |
-| 0.7 | **Safe-area insets + 390 px baseline + no-zoom viewport** | Nothing under the notch or home indicator; no sideways scroll |
-| 0.8 | Complete the token set and enforce it; shared sheet/toast/field/empty-state CSS | No hex outside `:root`; no off-scale px; one class list used by every later screen |
-| 0.9 | Screen transitions — eased 200 ms slide, respects `prefers-reduced-motion` | Feels like an app, not a page load |
+| 0.1 ✅ | `store.js`: load/save/migrate/reset over one localStorage key | Reload keeps data; corrupt JSON falls back to seed without a crash |
+| 0.2 ✅ | Seed data: 6 users, ~10 reports across all statuses, donation history | Fresh install shows a populated, believable town |
+| 0.3 ✅ | `app.html` shell + `router.js` + **bottom tab bar** | Tabs swap screens instantly; Android back button works |
+| 0.4 ✅ | **`manifest.webmanifest` + icons + `display:standalone`** | "Add to Home Screen" gives a full-screen app with no address bar |
+| 0.5 ✅ | **`sw.js` service worker — cache the shell and assets** | Aeroplane mode: the app still opens and navigates |
+| 0.6 ✅ | **Install prompt** on the landing page (+ iOS "tap Share → Add" hint) | A phone user installs without being told how |
+| 0.7 ✅ | **Safe-area insets + 390 px baseline + no-zoom viewport** | Nothing under the notch or home indicator; no sideways scroll |
+| 0.8 ✅ | Complete the token set and enforce it; shared sheet/toast/field/empty-state CSS | No hex outside `:root`; spacing and type on scale (component sizes and border widths are exempt); one class list used by every later screen |
+| 0.9 ✅ | Screen transitions — eased 200 ms slide, respects `prefers-reduced-motion` | Feels like an app, not a page load |
 
 ### Phase 1 — All users: accounts
 
 | # | Task | Done when |
 | --- | --- | --- |
-| 1.1 | Sign-up: name, email, password, role tick-boxes | New account persists and lands signed in |
-| 1.2 | Log in / log out, session in localStorage | Relaunch keeps you in; logout returns to landing |
-| 1.3 | Route guard | Opening `#/board` signed out bounces to login, then returns there after |
-| 1.4 | Profile: avatar, name, place, roles, member-since, role toggles | Toggling a role adds/removes its tab live |
-| 1.5 | One-tap demo logins (donor / reporter / cleaner) | A judge reaches any role in one tap |
-| 1.6 | Honest note: "demo accounts, passwords are not secure" | Visible once on sign-up, not nagging |
+| 1.1 ✅ | Sign-up: name, email, password, role tick-boxes | New account persists and lands signed in |
+| 1.2 ✅ | Log in / log out, session in localStorage | Relaunch keeps you in; logout returns to landing |
+| 1.3 ✅ | Route guard | Opening `#/board` signed out bounces to login, then returns there after |
+| 1.4 ✅ | Profile: avatar, name, place, roles, member-since, role toggles | Toggling a role adds/removes its tab live |
+| 1.5 ✅ | One-tap demo logins (donor / reporter / cleaner) | A judge reaches any role in one tap |
+| 1.6 ✅ | Honest note: "demo accounts, passwords are not secure" | Visible once on sign-up, not nagging |
 
 ### Phase 2 — Reporter: the report itself
 

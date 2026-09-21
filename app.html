@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- viewport-fit=cover lets the safe-area insets actually report values on iPhone -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Havak</title>
+<meta name="description" content="Report polluted spots in Dilijan, clean them up, fund the work.">
+
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1F6B4A">
+
+<!-- iOS ignores the manifest for these, so they are repeated here -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Havak">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="app">
+
+<div class="installbar" id="installbar" hidden></div>
+
+<main id="screen"></main>
+
+<nav class="tabbar" id="tabbar" aria-label="Main" hidden></nav>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="js/store.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/router.js"></script>
+<script src="js/views/auth.js"></script>
+<script src="js/views/feed.js"></script>
+<script src="js/views/me.js"></script>
+<script src="js/views/soon.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
