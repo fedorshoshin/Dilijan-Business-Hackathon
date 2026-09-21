@@ -1,9 +1,10 @@
 # Havak MVP — Design Doc
 
-**Status:** in build · **Date:** 2026-09-21 · **Target:** pilot with real users
+**Status:** in build · **Date:** 2026-09-21
 **Context:** 3rd place at the Dilijan Business Hackathon; invited to build a real MVP.
-**Target:** a mobile app — installable on a phone, offline-capable, built so it
-can be wrapped for the App Store and Play Store without rewriting it.
+**Target:** a **pilot** — real Dilijan users on their own phones, with every core
+feature actually working. Delivered as an installable, offline-capable mobile
+app, built so it can be wrapped for the app stores later without a rewrite.
 
 The hackathon build (`index.html` + `app.js`) is a one-page desktop-ish demo with
 a single hardcoded user. The MVP is a different shape: a phone app with real
