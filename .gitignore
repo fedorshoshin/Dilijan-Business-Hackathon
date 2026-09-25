@@ -1,3 +1,11 @@
 node_modules/
 package-lock.json
 package.json
+
+# Server secrets. .env.example is committed; a real .env never is — it holds the
+# database password, the JWT signing key and the Supabase service key.
+.env
+server/.env
+__pycache__/
+*.pyc
+.venv/

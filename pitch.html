@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Havak — pitch deck</title>
+<style>
+/* Havak pitch deck — green, spare, one idea per slide.
+   type 16 / 20 / 24 / 32 / 40 / 56 / 72 · spacing 4 / 8 / 12 / 16 / 24 / 32 / 48 / 64 */
+:root {
+  --ink:      #16261D;
+  --muted:    #47594E;
+  --deep:     #12452F;   /* darkest — title & close */
+  --green:    #1B6045;   /* mid — feature slides    */
+  --leaf:     #2A8A60;   /* accent                   */
+  --pale:     #E6F0E7;   /* light slide background   */
+  --paler:    #F1F7F1;
+  --line:     #CEDFD2;
+  --onDark:   #FFFFFF;
+  --onDarkMut:#BFDCCA;
+  --r-md: 12px;
+  --r-lg: 16px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+
+body {
+  background: #C9D8CC;
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- slide frame ---------- */
+.slide {
+  position: relative;
+  width: 1280px;
+  height: 720px;
+  margin: 24px auto;
+  padding: 64px 72px 88px;
+  background: var(--pale);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.slide + .slide { page-break-before: always; }
+
+/* three green depths */
+.deep  { background: var(--deep);  color: var(--onDark); }
+.mid   { background: var(--green); color: var(--onDark); }
+
+h1, h2, h3 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -.015em;
+}
+h1 { font-size: 88px; }
+h2 { font-size: 56px; }
+h3 { font-size: 32px; font-family: inherit; font-weight: 650; line-height: 1.25; }
+p  { margin: 0; }
+
+.eyebrow {
+  margin: 0 0 16px;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--green);
+}
+.deep .eyebrow, .mid .eyebrow { color: var(--onDarkMut); }
+.deep h2, .mid h2 { color: var(--onDark); }
+
+.slide-body { flex: 1; margin-top: 56px; display: flex; align-items: center; }
+.slide-body > * { width: 100%; }
+
+.num, .wm {
+  position: absolute;
+  bottom: 28px;
+  font-size: 16px;
+  color: #7E9285;
+}
+.num { right: 40px; }
+.wm  { left: 72px; }
+.deep .num, .deep .wm, .mid .num, .mid .wm { color: rgba(255,255,255,.45); }
+
+/* ---------- title & close ---------- */
+.deep.cover { justify-content: center; }
+.cover h1 { color: var(--onDark); }
+.cover .am {
+  margin-top: 12px;
+  font-family: Georgia, serif;
+  font-size: 40px;
+  color: var(--onDarkMut);
+}
+.cover .tag {
+  margin-top: 48px;
+  font-size: 24px;
+  color: #9BCBAE;
+}
+.cover-art { position: absolute; inset: auto 0 0 0; height: 260px; opacity: .55; }
+
+/* ---------- big three-up ---------- */
+.three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.tile {
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.22);
+  border-radius: var(--r-lg);
+  padding: 40px 32px;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+}
+.tile .k {
+  font-family: Georgia, serif;
+  font-size: 56px;
+  line-height: 1;
+  color: var(--onDark);
+}
+.tile p { font-size: 24px; line-height: 1.4; color: var(--onDarkMut); }
+
+/* light-slide tiles */
+.pale-tile {
+  background: #FFFFFF;
+  border: 1px solid var(--line);
+  border-top: 6px solid var(--leaf);
+  border-radius: var(--r-lg);
+  padding: 40px 32px;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+}
+.pale-tile h3 { color: var(--ink); }
+.pale-tile p { font-size: 24px; line-height: 1.4; color: var(--muted); }
+
+/* ---------- short key-point list ---------- */
+.keys { display: flex; flex-direction: column; gap: 20px; list-style: none; }
+.keys li {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  font-size: 32px;
+  line-height: 1.3;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+.keys li:last-child { border-bottom: 0; padding-bottom: 0; }
+.mid .keys li, .deep .keys li { border-color: rgba(255,255,255,.2); color: var(--onDark); }
+.leafdot {
+  width: 16px; height: 16px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--leaf);
+}
+.mid .leafdot, .deep .leafdot { background: #7FC79E; }
+
+/* ---------- four steps ---------- */
+.steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.step {
+  background: #FFFFFF;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 32px 24px;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 24px;
+}
+.step .n {
+  width: 56px; height: 56px;
+  border-radius: 999px;
+  background: var(--pale);
+  color: var(--green);
+  font-family: Georgia, serif;
+  font-size: 32px;
+  display: grid;
+  place-items: center;
+}
+.step h3 { font-size: 32px; }
+
+/* ---------- money ladder ---------- */
+.ladder { display: flex; flex-direction: column; gap: 12px; list-style: none; }
+.ladder li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 32px;
+  font-size: 24px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255,255,255,.2);
+  color: var(--onDarkMut);
+}
+.ladder .amt {
+  font-family: Georgia, serif;
+  font-size: 24px;
+  color: var(--onDark);
+  white-space: nowrap;
+}
+.ladder li.hi .amt { color: #8FE0B4; }
+.ladder li:last-child { border-bottom: 0; padding-bottom: 0; }
+
+/* ---------- big statistic + knock-on chain ---------- */
+.statwrap { display: grid; grid-template-columns: 420px 1fr; gap: 64px; align-items: center; }
+.fig {
+  font-family: Georgia, serif;
+  font-size: 160px;
+  line-height: 1;
+  color: #8FE0B4;
+}
+.fig-note { margin-top: 16px; font-size: 20px; line-height: 1.5; color: var(--onDarkMut); }
+.chain { display: flex; flex-direction: column; gap: 12px; list-style: none; }
+.chain li {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 32px;
+  line-height: 1.3;
+  color: var(--onDark);
+}
+.chain .arrow { color: #7FC79E; font-size: 24px; flex: none; width: 24px; }
+
+/* ---------- earn / spend columns ---------- */
+.twocol { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; }
+.colhead {
+  margin-bottom: 24px;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #9BCBAE;
+}
+.pts { display: flex; flex-direction: column; gap: 16px; list-style: none; }
+.pts li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 24px;
+  font-size: 24px;
+  color: var(--onDark);
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255,255,255,.2);
+}
+.pts li:last-child { border-bottom: 0; padding-bottom: 0; }
+.pts .amt {
+  font-family: Georgia, serif;
+  font-size: 24px;
+  color: #8FE0B4;
+  white-space: nowrap;
+}
+.tagword {
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--onDarkMut);
+  white-space: nowrap;
+}
+.note-line { margin-top: 40px; font-size: 20px; color: var(--onDarkMut); }
+
+/* ---------- QR card on the reveal slide ---------- */
+.qr {
+  position: absolute;
+  right: 96px;
+  top: 176px;
+  background: #FFFFFF;
+  border-radius: var(--r-lg);
+  padding: 24px 24px 16px;
+  text-align: center;
+}
+.qr img { display: block; width: 200px; height: 200px; }
+.qr figcaption {
+  margin-top: 12px;
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--ink);
+}
+
+/* ---------- decorative drawings ---------- */
+.art { position: absolute; pointer-events: none; fill: currentColor; }
+.art-corner {
+  top: 40px;
+  right: 56px;
+  width: 340px;
+  height: 180px;
+  color: var(--leaf);
+  opacity: .18;
+}
+.mid .art-corner, .deep .art-corner { color: #9BCBAE; opacity: .22; }
+
+@media print {
+  body { background: #FFFFFF; }
+  .slide { margin: 0; }
+}
+@page { size: 1280px 720px; margin: 0; }
+</style>
+</head>
+<body>
+
+<!-- reusable drawings: fir, oak, house, mountains, birds -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="fir" viewBox="0 0 60 100">
+      <path d="M27 100h6V78h-6z"/>
+      <path d="M30 4 48 40H12z"/>
+      <path d="M30 26 52 62H8z"/>
+      <path d="M30 48 56 84H4z"/>
+    </symbol>
+
+    <symbol id="oak" viewBox="0 0 100 100">
+      <path d="M46 100h8V58h-8z"/>
+      <circle cx="50" cy="38" r="26"/>
+      <circle cx="24" cy="54" r="21"/>
+      <circle cx="76" cy="54" r="21"/>
+      <circle cx="50" cy="60" r="25"/>
+    </symbol>
+
+    <symbol id="house" viewBox="0 0 100 100">
+      <path d="M4 46 50 8l46 38z"/>
+      <path d="M70 16h9v13l-9-7z"/>
+      <path d="M17 46h66v54H17z"/>
+      <path d="M13 62h74v5H13z"/>
+      <path d="M44 74h12v26H44z"/>
+    </symbol>
+
+    <symbol id="mountains" viewBox="0 0 200 100">
+      <path d="M0 100 46 22l30 40 32-48 46 86z"/>
+      <path d="M126 100 168 40l32 60z"/>
+    </symbol>
+
+    <symbol id="birds" viewBox="0 0 60 20">
+      <path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"
+            d="M2 13q6.5-8 13 0M22 7q6.5-8 13 0M42 15q6.5-8 13 0"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- 1 ─ title -->
+<section class="slide deep cover">
+  <svg class="cover-art" viewBox="0 0 1280 260" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0,140 C160,70 300,150 440,100 C580,50 700,130 840,88 C980,46 1140,124 1280,76 V260 H0 Z" fill="#1B6045"/>
+    <path d="M0,196 C170,146 320,208 470,166 C620,124 750,190 900,152 C1030,118 1150,178 1280,144 V260 H0 Z" fill="#22764F"/>
+    <g fill="#0D3A27">
+      <use href="#fir" x="34" y="154" width="52" height="86"/>
+      <use href="#fir" x="96" y="136" width="62" height="104"/>
+      <use href="#fir" x="168" y="162" width="46" height="78"/>
+      <use href="#house" x="238" y="180" width="60" height="60"/>
+      <use href="#oak" x="316" y="168" width="66" height="72"/>
+      <use href="#fir" x="948" y="150" width="56" height="90"/>
+      <use href="#house" x="1018" y="176" width="64" height="64"/>
+      <use href="#fir" x="1100" y="132" width="66" height="108"/>
+    </g>
+  </svg>
+  <p class="eyebrow">Dilijan · Tavush · Armenia</p>
+  <h1>Who picks it up?</h1>
+  <p class="am">Ո՞վ է հավաքելու</p>
+  <span class="num">1</span>
+</section>
+
+<!-- 2 ─ what it costs -->
+<section class="slide mid">
+  <svg class="art art-corner" viewBox="0 0 340 180" aria-hidden="true">
+    <use href="#mountains" x="40" y="60" width="180" height="90"/>
+    <use href="#house" x="228" y="92" width="58" height="58"/>
+    <use href="#fir" x="292" y="78" width="42" height="72"/>
+    <use href="#birds" x="150" y="26" width="60" height="20"/>
+  </svg>
+  <p class="eyebrow">The problem</p>
+  <h2>Rubbish costs Armenia money</h2>
+  <div class="slide-body">
+    <div class="statwrap">
+      <div>
+        <p class="fig">40%</p>
+        <p class="fig-note">of Armenians name rubbish and landfill mismanagement a top-3 environmental problem</p>
+      </div>
+      <ul class="chain">
+        <li><span class="arrow">→</span>Tourists turn away</li>
+        <li><span class="arrow">→</span>The city's image suffers</li>
+        <li><span class="arrow">→</span>The country's economy pays</li>
+      </ul>
+    </div>
+  </div>
+  <span class="num">2</span>
+</section>
+
+<!-- 3 ─ the case -->
+<section class="slide">
+  <svg class="art art-corner" viewBox="0 0 340 180" aria-hidden="true">
+    <use href="#mountains" x="20" y="50" width="200" height="100"/>
+    <use href="#fir" x="212" y="80" width="42" height="70"/>
+    <use href="#fir" x="252" y="62" width="52" height="88"/>
+    <use href="#fir" x="300" y="92" width="34" height="58"/>
+  </svg>
+  <p class="eyebrow">Why nothing changes</p>
+  <h2>Armenia wants to clean up</h2>
+  <div class="slide-body">
+    <ul class="keys">
+      <li><span class="leafdot"></span>No one knows where the rubbish is</li>
+      <li><span class="leafdot"></span>Volunteers never find each other</li>
+      <li><span class="leafdot"></span>A cleaned Saturday leaves no proof</li>
+      <li><span class="leafdot"></span>Big damage needs money, not bags</li>
+    </ul>
+  </div>
+  <span class="num">3</span>
+</section>
+
+<!-- 4 ─ the reveal -->
+<section class="slide deep cover">
+  <svg class="cover-art" viewBox="0 0 1280 260" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0,140 C160,70 300,150 440,100 C580,50 700,130 840,88 C980,46 1140,124 1280,76 V260 H0 Z" fill="#1B6045"/>
+    <path d="M0,196 C170,146 320,208 470,166 C620,124 750,190 900,152 C1030,118 1150,178 1280,144 V260 H0 Z" fill="#22764F"/>
+    <g fill="#0D3A27">
+      <use href="#fir" x="34" y="154" width="52" height="86"/>
+      <use href="#oak" x="100" y="168" width="70" height="72"/>
+      <use href="#fir" x="182" y="136" width="62" height="104"/>
+      <use href="#house" x="262" y="180" width="60" height="60"/>
+      <use href="#fir" x="948" y="150" width="56" height="90"/>
+      <use href="#house" x="1018" y="176" width="64" height="64"/>
+      <use href="#fir" x="1100" y="132" width="66" height="108"/>
+    </g>
+  </svg>
+  <figure class="qr">
+    <img src="images/qr-havak.png" width="200" height="200" alt="QR code linking to the Havak app">
+    <figcaption>Scan to open Havak</figcaption>
+  </figure>
+  <p class="eyebrow">The answer</p>
+  <h1>Havak</h1>
+  <p class="am">Հավաք · to gather</p>
+  <p class="tag">Report it. Clean it. Fund it.</p>
+  <span class="num">4</span>
+</section>
+
+<!-- 5 ─ solution -->
+<section class="slide mid">
+  <svg class="art art-corner" viewBox="0 0 340 180" aria-hidden="true">
+    <use href="#fir" x="24" y="70" width="48" height="80"/>
+    <use href="#house" x="86" y="90" width="60" height="60"/>
+    <use href="#oak" x="160" y="78" width="64" height="72"/>
+    <use href="#house" x="238" y="90" width="60" height="60"/>
+    <use href="#birds" x="150" y="20" width="60" height="20"/>
+  </svg>
+  <p class="eyebrow">The solution</p>
+  <h2>Havak — one app, three moves</h2>
+  <div class="slide-body">
+    <div class="three">
+      <div class="tile">
+        <span class="k">Report</span>
+        <p>Put the spot on the map</p>
+      </div>
+      <div class="tile">
+        <span class="k">Cooperate</span>
+        <p>Form a crew, clean it together</p>
+      </div>
+      <div class="tile">
+        <span class="k">Fund</span>
+        <p>Pay for what bags can't fix</p>
+      </div>
+    </div>
+  </div>
+  <span class="wm">Havak</span><span class="num">5</span>
+</section>
+
+<!-- 6 ─ how it works -->
+<section class="slide">
+  <svg class="art art-corner" viewBox="0 0 340 180" aria-hidden="true">
+    <use href="#fir" x="30" y="78" width="44" height="72"/>
+    <use href="#fir" x="80" y="62" width="54" height="88"/>
+    <use href="#oak" x="142" y="76" width="66" height="74"/>
+    <use href="#fir" x="220" y="68" width="50" height="82"/>
+    <use href="#fir" x="276" y="88" width="40" height="62"/>
+  </svg>
+  <p class="eyebrow">How it works</p>
+  <h2>Four steps</h2>
+  <div class="slide-body">
+    <div class="steps">
+      <div class="step"><span class="n">1</span><h3>Spot it</h3></div>
+      <div class="step"><span class="n">2</span><h3>Gather a crew</h3></div>
+      <div class="step"><span class="n">3</span><h3>Clean it</h3></div>
+      <div class="step"><span class="n">4</span><h3>Get certified</h3></div>
+    </div>
+  </div>
+  <span class="wm">Havak</span><span class="num">6</span>
+</section>
+
+<!-- 7 ─ rewards -->
+<section class="slide mid">
+  <svg class="art art-corner" viewBox="0 0 340 180" aria-hidden="true">
+    <use href="#oak" x="30" y="66" width="76" height="84"/>
+    <use href="#fir" x="120" y="62" width="50" height="88"/>
+    <use href="#house" x="186" y="90" width="60" height="60"/>
+    <use href="#fir" x="262" y="74" width="46" height="76"/>
+    <use href="#birds" x="170" y="26" width="60" height="20"/>
+  </svg>
+  <p class="eyebrow">Why people come back</p>
+  <h2>Points, and being seen</h2>
+  <div class="slide-body">
+    <div>
+      <div class="twocol">
+        <div>
+          <p class="colhead">Earn</p>
+          <ul class="pts">
+            <li><span>Report a spot</span><span class="amt">+5</span></li>
+            <li><span>Join a crew</span><span class="amt">+5</span></li>
+            <li><span>Finish a cleanup</span><span class="amt">+20</span></li>
+          </ul>
+        </div>
+        <div>
+          <p class="colhead">Spend</p>
+          <ul class="pts">
+            <li><span>Vote on what gets funded</span><span class="amt">10 pts</span></li>
+            <li><span>Earn the right to moderate reports</span><span class="tagword">unlocked</span></li>
+            <li><span>Gear and discounts</span><span class="tagword">from partners</span></li>
+          </ul>
+        </div>
+      </div>
+      <p class="note-line">Three cleanups earn a Verified Eco-Activist certificate — proof for a CV.</p>
+    </div>
+  </div>
+  <span class="wm">Havak</span><span class="num">7</span>
+</section>
+
+<!-- 8 ─ who does the work -->
+<section class="slide">
+  <svg class="art art-corner" viewBox="0 0 340 180" aria-hidden="true">
+    <use href="#house" x="40" y="84" width="66" height="66"/>
+    <use href="#house" x="122" y="70" width="80" height="80"/>
+    <use href="#house" x="218" y="84" width="66" height="66"/>
+    <use href="#fir" x="292" y="78" width="42" height="72"/>
+  </svg>
+  <p class="eyebrow">Who does the work</p>
+  <h2>Hands</h2>
+  <div class="slide-body">
+    <div class="three">
+      <div class="pale-tile">
+        <h3>Students</h3>
+        <p>Volunteering for the portfolio</p>
+      </div>
+      <div class="pale-tile">
+        <h3>Eco-activists</h3>
+        <p>Already organising — now with a map</p>
+      </div>
+      <div class="pale-tile">
+        <h3>Municipality</h3>
+        <p>Owns the fixes only the state can make</p>
+      </div>
+    </div>
+  </div>
+  <span class="wm">Havak</span><span class="num">8</span>
+</section>
+
+<!-- 9 ─ who funds it -->
+<section class="slide mid">
+  <svg class="art art-corner" viewBox="0 0 340 180" aria-hidden="true">
+    <use href="#oak" x="106" y="32" width="106" height="118"/>
+    <use href="#fir" x="46" y="78" width="44" height="72"/>
+    <use href="#fir" x="228" y="72" width="50" height="78"/>
+    <use href="#birds" x="240" y="26" width="56" height="19"/>
+  </svg>
+  <p class="eyebrow">Who funds it</p>
+  <h2>Money</h2>
+  <div class="slide-body">
+    <div class="three">
+      <div class="tile">
+        <span class="k">Diaspora</span>
+        <p>Armenians here and abroad</p>
+      </div>
+      <div class="tile">
+        <span class="k">State</span>
+        <p>Government and municipality</p>
+      </div>
+      <div class="tile">
+        <span class="k">Business</span>
+        <p>Tourism and food producers</p>
+      </div>
+    </div>
+  </div>
+  <span class="wm">Havak</span><span class="num">9</span>
+</section>
+
+<!-- 10 ─ what money fixes -->
+<section class="slide deep">
+  <svg class="art art-corner" viewBox="0 0 340 180" aria-hidden="true">
+    <use href="#mountains" x="60" y="60" width="180" height="90"/>
+    <use href="#fir" x="34" y="78" width="44" height="72"/>
+    <use href="#house" x="238" y="92" width="58" height="58"/>
+  </svg>
+  <p class="eyebrow">What money fixes</p>
+  <h2>From gloves to a treatment plant</h2>
+  <div class="slide-body">
+    <ul class="ladder">
+      <li><span>Gloves, bags, first-aid kit</span><span class="amt">60 000 AMD</span></li>
+      <li><span>Truck for one river clear-out</span><span class="amt">120 000 AMD</span></li>
+      <li><span>Five recycling bins</span><span class="amt">350 000 AMD</span></li>
+      <li><span>Fenced waste point</span><span class="amt">1 200 000 AMD</span></li>
+      <li class="hi"><span>Sewer line, 40 houses</span><span class="amt">45 000 000 AMD</span></li>
+      <li class="hi"><span>Treatment plant, biological stage</span><span class="amt">900 000 000 AMD</span></li>
+    </ul>
+  </div>
+  <span class="wm">Havak</span><span class="num">10</span>
+</section>
+
+<!-- 11 ─ promotion -->
+<section class="slide">
+  <svg class="art art-corner" viewBox="0 0 340 180" aria-hidden="true">
+    <use href="#birds" x="40" y="16" width="72" height="24"/>
+    <use href="#birds" x="150" y="34" width="56" height="19"/>
+    <use href="#fir" x="52" y="74" width="48" height="76"/>
+    <use href="#oak" x="120" y="78" width="66" height="72"/>
+    <use href="#fir" x="200" y="62" width="56" height="88"/>
+    <use href="#mountains" x="250" y="90" width="90" height="60"/>
+  </svg>
+  <p class="eyebrow">How we grow it</p>
+  <h2>Reach</h2>
+  <div class="slide-body">
+    <div class="three">
+      <div class="pale-tile">
+        <h3>Influencers</h3>
+        <p>Activists with an audience</p>
+      </div>
+      <div class="pale-tile">
+        <h3>Summits</h3>
+        <p>Ecological conferences</p>
+      </div>
+      <div class="pale-tile">
+        <h3>COP17</h3>
+        <p>Armenia hosts the world</p>
+      </div>
+    </div>
+  </div>
+  <span class="wm">Havak</span><span class="num">11</span>
+</section>
+
+<!-- 12 ─ ask -->
+<section class="slide deep cover">
+  <svg class="cover-art" viewBox="0 0 1280 260" preserveAspectRatio="none" aria-hidden="true">
+    <use href="#mountains" x="820" y="10" width="300" height="150" fill="#1B6045"/>
+    <use href="#mountains" x="1040" y="46" width="240" height="120" fill="#1B6045"/>
+    <path d="M0,150 C160,86 300,158 440,112 C580,66 700,142 840,100 C980,58 1140,132 1280,88 V260 H0 Z" fill="#1B6045"/>
+    <path d="M0,202 C170,154 320,214 470,174 C620,134 750,196 900,160 C1030,128 1150,184 1280,152 V260 H0 Z" fill="#22764F"/>
+    <g fill="#0D3A27">
+      <use href="#fir" x="30" y="150" width="54" height="90"/>
+      <use href="#oak" x="96" y="162" width="70" height="78"/>
+      <use href="#fir" x="176" y="134" width="64" height="106"/>
+      <use href="#house" x="256" y="178" width="62" height="62"/>
+      <use href="#fir" x="332" y="156" width="48" height="84"/>
+      <use href="#house" x="880" y="174" width="66" height="66"/>
+      <use href="#fir" x="962" y="138" width="60" height="102"/>
+      <use href="#oak" x="1036" y="160" width="72" height="80"/>
+      <use href="#fir" x="1124" y="148" width="52" height="92"/>
+    </g>
+  </svg>
+  <p class="eyebrow">The ask</p>
+  <h2>Dilijan first.<br>Then every town in Armenia.</h2>
+  <p class="tag">Հավաք · Havak</p>
+  <span class="num">12</span>
+</section>
+
+</body>
+</html>

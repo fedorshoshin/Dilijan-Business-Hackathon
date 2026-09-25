@@ -14,12 +14,20 @@ Read alongside `DESIGN.md` section 5.
 
 ## 1. What I need from you to connect
 
+**Settled 2026-09-25: our own FastAPI server, not direct-to-Supabase.** The
+client talks only to the API; Supabase is the database and bucket store behind
+it. Server code is in `server/`, deployed by you.
+
 | | |
 | --- | --- |
-| Base URL | e.g. `https://xxxx.supabase.co` or your own host |
-| Public/anon key | safe to commit; ships in the static frontend |
-| Auth style | Supabase Auth, or your own JWT endpoints (see §5) |
-| Storage style | signed upload URLs, or direct upload with the anon key (§6) |
+| Base URL | the deployed FastAPI origin — **still needed**, and must be HTTPS |
+| Public/anon key | no longer used by the client; the API holds the secrets instead |
+| Auth style | our own JWT endpoints (§5). Bearer token in `Authorization` |
+| Storage style | signed upload URLs minted by the API (§6) |
+| Naming | `snake_case` on the wire, matching the database. The client maps in `api.js` |
+
+The only thing still outstanding to write `api.js` is the deployed base URL and
+`ALLOWED_ORIGINS` set to the published site.
 
 **Never send me the `service_role` key or any secret.** The frontend is static —
 anything it holds is readable by anyone who opens the page source. If an
@@ -243,10 +251,27 @@ offline. The database decides (§3.1) and the client tells the loser plainly.
 
 ## 9. Still open
 
-- **Supabase or your own server?** Changes the client transport, not this
-  contract. I need to know before writing `api.js`.
-- **`camelCase` or `snake_case`** on the wire — one of us maps, in one place.
-- **Are report photos public or signed?** Affects offline caching.
+### Settled 2026-09-25
+
+- **Our own FastAPI server** (§1). Built in `server/`, routes listed in
+  `server/README.md`.
+- **`snake_case`** on the wire. The client maps in one place.
+- **Report photos are signed, avatars are public.** A report photo carries the
+  GPS of a real place; an avatar appears beside every name on every list and
+  signing dozens per screen buys no privacy. Offline caching therefore stores
+  report media as blobs in IndexedDB, not as URLs — a signed URL expires
+  (`READ_URL_TTL`, 6 hours) and a cached one would break.
+- **Passwords** are bcrypt hashes in `users.password_hash`, added by
+  `sql/002_server.sql`. The "passwords are not secure" notice comes off the
+  screen when the client cuts over.
+- **Idempotency** needed a column the original schema did not have. `client_id`
+  is now on `reports`, `claims`, `donations` and `media`, each with a unique
+  index, so a replayed offline write returns the original row instead of
+  duplicating it.
+
+### Still open
+
+- **The deployed base URL.** Blocks `api.js`.
 - **Who owns deletion requests?** Real names, photos and GPS of real people.
   `DESIGN.md` open decision #7 — not a coding task, but it blocks going live.
 - **Do you want PostGIS?** The client sorts the cleaner's board by distance. It
