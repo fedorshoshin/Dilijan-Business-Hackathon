@@ -46,11 +46,22 @@ package-relative (`server.main`). Interactive docs at `/docs`, health check at
 For a service manager, one worker is plenty for a pilot:
 
 ```
-uvicorn server.main:app --host 0.0.0.0 --port 8000 --workers 1 --proxy-headers
+uvicorn server.main:app --host 127.0.0.1 --port 8000 --workers 1 --proxy-headers
 ```
 
 `--proxy-headers` matters behind nginx or a platform router, otherwise logged
 client IPs are all the proxy.
+
+**`--host 127.0.0.1`, not `0.0.0.0`, whenever something terminates TLS in front
+of you.** `0.0.0.0` publishes uvicorn on every interface, so the API answers the
+open internet directly on port 8000 — bypassing TLS entirely, which means every
+`POST /auth/login` carries its password in cleartext and every reply leaks its
+bearer token. This is not hypothetical: it is exactly what was live on the pilot
+VPS until 2026-09-28. Bind to loopback and let nginx be the only way in.
+
+Don't run it by hand in an SSH session either — it dies when the session closes,
+which is how the pilot API ended up online only while someone was logged in.
+`deploy/havak-api.service` is the unit that fixes that.
 
 ## Three things that will bite you on deploy
 
