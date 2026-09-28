@@ -52,7 +52,14 @@ uvicorn server.main:app --host 0.0.0.0 --port 8000 --workers 1 --proxy-headers
 `--proxy-headers` matters behind nginx or a platform router, otherwise logged
 client IPs are all the proxy.
 
-## Two things that will bite you on deploy
+## Three things that will bite you on deploy
+
+**Use the pooler host in `DATABASE_URL`.** `db.<ref>.supabase.co` resolves to an
+IPv6 address only — Supabase charges extra for IPv4 there. On an IPv4-only
+server that fails at DNS with `Temporary failure in name resolution`, which
+looks like a database problem but happens before Postgres is contacted. Take the
+**Connect → Session pooler** URI instead, and note the username becomes
+`postgres.<project-ref>` rather than plain `postgres`.
 
 **HTTPS is mandatory, not a nicety.** The published site is HTTPS, so a browser
 refuses to call an HTTP API from it — mixed content is blocked outright. Put the
