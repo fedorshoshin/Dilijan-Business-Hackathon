@@ -77,24 +77,45 @@ def _send_smtp(message: EmailMessage) -> None:
         smtp.send_message(message)
 
 
+def _write_to_log(to: str, subject: str, body: str, reason: str, level=logging.INFO) -> None:
+    """Put the whole message, link and all, in the journal.
+
+    This is the log backend's only job, and it is also what happens whenever a
+    real send fails. A password-reset link that is neither delivered nor written
+    down anywhere is a user locked out of their account for good — so when the
+    relay refuses, the link goes here and somebody with journal access can still
+    get them back in. That is not a leak of anything the operator did not already
+    have: root on this box can read the database directly.
+
+    Indented so the whole message reads as one block in the journal.
+    """
+    logger.log(
+        level,
+        "email/log — NOT DELIVERED (%s). To: %s\n    Subject: %s\n%s",
+        reason,
+        to,
+        subject,
+        "\n".join("    " + line for line in body.splitlines()),
+    )
+
+
 async def send(to: str, subject: str, body: str) -> bool:
     """True if handed off to a relay, False if not sent. Never raises."""
     if BACKEND == "log":
-        # Indented so the whole message is obvious as one block in the journal.
-        logger.info(
-            "email/log — NOT SENT (EMAIL_BACKEND=log). To: %s\n    Subject: %s\n%s",
-            to,
-            subject,
-            "\n".join("    " + line for line in body.splitlines()),
-        )
+        _write_to_log(to, subject, body, "EMAIL_BACKEND=log")
         return False
 
     if BACKEND != "smtp":
-        logger.error("EMAIL_BACKEND=%r is not a backend; no mail sent to %s", BACKEND, to)
+        _write_to_log(to, subject, body,
+                      "EMAIL_BACKEND=%r is not a backend" % BACKEND, logging.ERROR)
         return False
 
     if not SMTP_HOST:
-        logger.error("EMAIL_BACKEND=smtp but SMTP_HOST is empty; no mail sent to %s", to)
+        # The exact half-configured state you land in by flipping EMAIL_BACKEND to
+        # smtp without filling in the relay. Loud, and the link is still written
+        # down, so the switch being flipped early costs nothing.
+        _write_to_log(to, subject, body,
+                      "EMAIL_BACKEND=smtp but SMTP_HOST is empty", logging.ERROR)
         return False
 
     message = EmailMessage()
@@ -113,7 +134,8 @@ async def send(to: str, subject: str, body: str) -> bool:
         # Deliberately broad: DNS, TLS, auth, timeout, a relay refusing the
         # sender. Every one of them means "not delivered", and none of them is
         # the caller's problem to handle.
-        logger.error("email to %s failed: %s: %s", to, type(exc).__name__, exc)
+        _write_to_log(to, subject, body,
+                      "%s: %s" % (type(exc).__name__, exc), logging.ERROR)
         return False
 
 

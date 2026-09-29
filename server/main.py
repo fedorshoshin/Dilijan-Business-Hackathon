@@ -55,8 +55,21 @@ async def lifespan(app: FastAPI):
             "being delivered; the links are written to this log instead. Set "
             "EMAIL_BACKEND=smtp and the SMTP_ settings to send them for real."
         )
+    elif mail.BACKEND == "smtp" and not mail.SMTP_HOST:
+        # Flipping the switch without filling in the relay is the easy mistake,
+        # and it is invisible from outside: the app still says "check your inbox"
+        # and the API still answers 200. Say so at every start, not only when
+        # somebody is already locked out and waiting on a link.
+        logger.warning(
+            "EMAIL_BACKEND=smtp but SMTP_HOST is empty — no mail can be sent. "
+            "Links are being written to this log instead. Fill in SMTP_HOST, "
+            "SMTP_USER and SMTP_PASSWORD in server/.env, then restart."
+        )
     else:
-        logger.info("email backend: %s via %s", mail.BACKEND, mail.SMTP_HOST or "(unset)")
+        logger.info(
+            "email backend: %s via %s:%s as %s",
+            mail.BACKEND, mail.SMTP_HOST, mail.SMTP_PORT, mail.SMTP_USER or "(no auth)",
+        )
     try:
         yield
     finally:
