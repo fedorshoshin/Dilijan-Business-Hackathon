@@ -112,23 +112,14 @@ Havak.views = Havak.views || {};
           });
         }
       }),
-      el('button.linkbtn.linkbtn-danger', {
-        type: 'button',
-        text: 'Reset the demo data',
-        onclick: function () {
-          if (!window.confirm('Reset every account, report and donation back to the starting data?')) return;
-          store.reset()
-            .then(function () { return auth.init(); })
-            .then(function () {
-              Havak.shell.syncTabs();
-              Havak.router.go('/login', true);
-              ui.toast('Demo reset');
-            });
-        }
-      }),
+      /* "Reset the demo data" is gone. It re-seeded this phone's own
+         localStorage, which was harmless when that was all there was. The same
+         button against a shared database would destroy other people's reports,
+         and no single phone should be able to do that. */
       el('p.notice.notice-plain', {
-        text: 'Everything here is saved on this phone only. Nobody else can see ' +
-              'it, and clearing your browser data clears it.'
+        text: 'Your reports and donations are saved on the Havak server, so they ' +
+              'follow you to any phone you sign in on. Other people using Havak ' +
+              'can see your name and what you report.'
       })
     ]);
 

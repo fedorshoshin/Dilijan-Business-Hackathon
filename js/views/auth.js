@@ -65,23 +65,10 @@ Havak.views = Havak.views || {};
       el('button.btn.btn-primary.btn-block', { type: 'submit', text: 'Log in' })
     ]);
 
-    var demos = el('div.demo-row');
-    var demosReady = auth.demoAccounts().then(function (list) {
-      list.forEach(function (d) {
-        demos.appendChild(el('button.demo-chip', {
-          type: 'button',
-          onclick: function () {
-            auth.logInAs(d.user.id).then(function () {
-              Havak.ui.toast('Signed in as ' + d.user.name);
-              Havak.router.resume();
-            });
-          }
-        }, [
-          el('strong', { text: d.user.name.split(' ')[0] }),
-          el('small', { text: d.caption })
-        ]));
-      });
-    });
+    /* The one-tap demo accounts are gone. They logged you in as a seeded person
+       with no password, which was fine when the data lived on your own phone and
+       is not fine now that these are real rows other people share. The seeded
+       accounts still exist; they are logged into with a password like any other. */
 
     screen.appendChild(el('div.auth-wrap', null, [
       brand('Report it, clean it, fund it — for Dilijan.'),
@@ -94,13 +81,7 @@ Havak.views = Havak.views || {};
           onclick: function () { Havak.router.go('/signup'); }
         })
       ]),
-      el('div.demo-box', null, [
-        el('p.demo-head', { text: 'Or try a demo account' }),
-        demos
-      ])
     ]));
-
-    return demosReady;
   };
 
   /* ---------- sign up ---------- */
@@ -162,8 +143,8 @@ Havak.views = Havak.views || {};
       errBox,
       el('button.btn.btn-primary.btn-block', { type: 'submit', text: 'Create account' }),
       el('p.notice.notice-plain', {
-        text: 'Demo build: your account is stored only on this phone, and the ' +
-              'password is not protected. Do not reuse a real password.'
+        text: 'Your password is hashed on our server and never stored on this ' +
+              'phone. Your name and reports are visible to other Havak users.'
       })
     ]);
 

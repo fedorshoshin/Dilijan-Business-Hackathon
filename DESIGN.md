@@ -95,8 +95,8 @@ manifest.webmanifest   name, icons, theme colour, display:standalone
 sw.js                  service worker: offline cache of shell + assets
 icons/                 192/512 px PWA icons, maskable variants
 style.css              one stylesheet, existing tokens, extended
-js/store.js            the ONLY data layer the views know about (async)
-js/api.js              backend client — swapped in behind store.js at Phase 3.5
+js/remote.js           the ONLY data layer the views know about (async)
+js/api.js              backend client: HTTP, tokens, snake_case <-> camelCase
 js/sync.js             offline write queue + replay on reconnect (5.4)
 js/media.js            blob put/get — IndexedDB, then the storage bucket
 js/auth.js             signup / login / logout / session / route guard
@@ -107,9 +107,12 @@ js/money.js            the payout formula, and later the allocation ledger (7.2)
 js/views/*.js          one file per screen
 ```
 
-**`store.js` is the seam.** No view file ever touches `localStorage`, Supabase
-or IndexedDB directly. That is what makes the Phase 3.5 cutover a one-file
-change instead of a rewrite.
+**That data layer is the seam,** and it held. No view file ever touched
+`localStorage` directly, so the Phase 3.5 cutover on 2026-09-29 replaced
+`store.js` with `remote.js` over `api.js` and changed not one view. The two
+files that did change (`auth.js`, and the copy on two screens) changed because
+what they *said* stopped being true — passwords are hashed on the server now,
+and the data is shared rather than stuck on one phone.
 
 Plain scripts in IIFEs under a small `Havak.*` namespace — matching the existing
 `app.js` style. No build step, because a build step cannot run at serve time.

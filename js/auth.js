@@ -1,13 +1,19 @@
 /* Havak — accounts and session.
 
-   Honest about what this is today: passwords are stored in plain text on this
-   device because there is no server to check them against. Hashing here would
-   look like security without being any, since the check also happens on this
-   device. The sign-up screen says so plainly rather than pretending.
+   Passwords are now checked on the server and stored there as bcrypt hashes
+   (sql/002_server.sql). This file no longer sees a password after it has been
+   posted, and no password is ever written to the device. The sign-up screen's
+   notice about plain text came off when this landed, because it stopped being
+   true — BACKEND.md §5.
 
-   This goes away at Phase 3.5, when passwords move to the server and are
-   hashed properly. The shape below is already the shape that needs — signUp
-   and logIn are async and return a session. */
+   The session is a bearer token in localStorage, held by api.js. What survives
+   an app relaunch is that token, not the account: on boot the token is exchanged
+   for the current profile via GET /me, so a role changed on another device shows
+   up here, and a revoked session lands on the login screen instead of a stale
+   view of someone who is no longer signed in.
+
+   The interface below is unchanged from the localStorage build, deliberately —
+   the views call exactly what they called before. */
 
 window.Havak = window.Havak || {};
 
@@ -15,6 +21,7 @@ Havak.auth = (function () {
   'use strict';
 
   var store = Havak.store;
+  var api = Havak.api;
 
   var ROLES = [
     { key: 'reporter', label: 'Report polluted spots', hint: 'You find them and photograph them' },
@@ -31,19 +38,19 @@ Havak.auth = (function () {
     return String(email || '').trim().toLowerCase();
   }
 
-  function byEmail(email) {
-    var wanted = normaliseEmail(email);
-    return store.where('users', function (u) {
-      return normaliseEmail(u.email) === wanted;
-    }).then(function (found) { return found.length ? found[0] : null; });
-  }
-
   /* called once at boot, before the first render */
   function init() {
-    return store.ready().then(function () {
-      var s = store.session();
+    return store.ready().then(function (signed) {
+      var s = signed ? store.session() : null;
       me = s && s.userId ? store.userSync(s.userId) : null;
       return me;
+    }, function (err) {
+      /* The server is unreachable. Boot must still finish, or the app shows
+         nothing at all; the login screen will report the real reason when the
+         user tries to sign in. */
+      me = null;
+      if (Havak.ui && err && err.code === 'offline') Havak.ui.toast(err.message);
+      return null;
     });
   }
 
@@ -52,7 +59,9 @@ Havak.auth = (function () {
 
   /* ---------- sign up ----------
      Resolves to { ok: true, user } or { ok: false, field, message } so the form
-     can highlight the field that is actually wrong. */
+     can highlight the field that is actually wrong. The checks here are for fast
+     feedback only — the server validates everything again, and it is the server
+     that decides. */
   function signUp(input) {
     var name = String(input.name || '').trim();
     var email = normaliseEmail(input.email);
@@ -74,57 +83,46 @@ Havak.auth = (function () {
       return Promise.resolve({ ok: false, field: 'roles', message: 'Pick at least one thing you want to do.' });
     }
 
-    return byEmail(email).then(function (existing) {
-      if (existing) {
-        return { ok: false, field: 'email', message: 'An account already uses that email. Try logging in.' };
-      }
-      return store.add('users', {
-        id: store.newId('u'),
-        name: name,
-        email: email,
-        pass: pass,
-        roles: roles,
-        place: String(input.place || '').trim() || 'Dilijan, Tavush',
-        joinedAt: Date.now()
-      }).then(function (user) {
-        startSession(user);
-        return { ok: true, user: user };
-      });
-    }).catch(function (err) {
-      return { ok: false, field: 'pass', message: err.message || 'That did not save. Try again.' };
+    return api.signUp({
+      name: name,
+      email: email,
+      password: pass,
+      roles: roles,
+      place: String(input.place || '').trim() || 'Dilijan, Tavush'
+    }).then(function (session) {
+      me = store.adopt(session.user);
+      return { ok: true, user: me };
+    }, function (err) {
+      return { ok: false, field: fieldFor(err), message: err.message };
     });
+  }
+
+  /* An email already in use is the one server-side failure a form can point at
+     a specific input. Everything else belongs against the password field, which
+     is where the form shows its general error. */
+  function fieldFor(err) {
+    return /email/i.test(err.message || '') ? 'email' : 'pass';
   }
 
   /* ---------- log in ----------
      One message for both a wrong email and a wrong password: naming which half
-     failed tells an attacker which emails have accounts. */
+     failed tells an attacker which emails have accounts. The server returns a
+     single message for the same reason. */
   function logIn(email, pass) {
-    return byEmail(email).then(function (user) {
-      if (!user || user.pass !== String(pass || '')) {
-        return { ok: false, field: 'pass', message: 'Email or password is wrong.' };
-      }
-      startSession(user);
-      return { ok: true, user: user };
+    return api.logIn(normaliseEmail(email), String(pass || '')).then(function (session) {
+      me = store.adopt(session.user);
+      return { ok: true, user: me };
+    }, function (err) {
+      var message = err.code === 'not_authorised'
+        ? 'Email or password is wrong.'
+        : err.message;
+      return { ok: false, field: 'pass', message: message };
     });
-  }
-
-  function logInAs(userId) {
-    return store.find('users', userId).then(function (user) {
-      if (!user) return { ok: false, message: 'That demo account is missing.' };
-      startSession(user);
-      return { ok: true, user: user };
-    });
-  }
-
-  function startSession(user) {
-    me = user;
-    store.setSession({ userId: user.id, since: Date.now() });
   }
 
   function logOut() {
     me = null;
-    store.setSession(null);
-    return Promise.resolve(true);
+    return store.reset();
   }
 
   /* ---------- roles ---------- */
@@ -148,22 +146,9 @@ Havak.auth = (function () {
     return store.update('users', me.id, { roles: roles }).then(function (user) {
       me = user;
       return true;
+    }, function () {
+      return false;
     });
-  }
-
-  /* the seeded accounts offered as one-tap logins on the sign-in screen */
-  function demoAccounts() {
-    var wanted = [
-      { userId: 'u-narek',  caption: 'all three roles' },
-      { userId: 'u-ani',    caption: 'reporter' },
-      { userId: 'u-davit',  caption: 'cleaner' },
-      { userId: 'u-lusine', caption: 'donor' }
-    ];
-    return Promise.all(wanted.map(function (d) {
-      return store.find('users', d.userId).then(function (u) {
-        return u ? { user: u, caption: d.caption } : null;
-      });
-    })).then(function (list) { return list.filter(Boolean); });
   }
 
   return {
@@ -173,10 +158,8 @@ Havak.auth = (function () {
     signedIn: signedIn,
     signUp: signUp,
     logIn: logIn,
-    logInAs: logInAs,
     logOut: logOut,
     hasRole: hasRole,
-    setRole: setRole,
-    demoAccounts: demoAccounts
+    setRole: setRole
   };
 })();
