@@ -105,6 +105,26 @@ the IP static, or plan to redo this.
 this certificate successfully already; leave that mechanism alone. Check it with
 `certbot renew --dry-run` rather than assuming.
 
+## Email: nothing is delivered yet
+
+`server/.env` has `EMAIL_BACKEND=log`, which sends nothing. Confirmation and
+password-reset links are written to the journal instead:
+
+    journalctl -u havak-api --since '-5 min' | grep -A12 'email/log'
+
+The API logs a warning on every start saying so, because the failure is otherwise
+invisible from outside: the app says "check your inbox" and the API answers 200
+while no mail moves.
+
+To deliver for real, set `EMAIL_BACKEND=smtp` and the four `SMTP_` settings in
+`server/.env`, then `systemctl restart havak-api`. No code changes. Both shapes
+are written out in `server/.env.example`; for a pilot, Gmail with an App Password
+is the pragmatic choice — 500/day, works immediately, needs no domain.
+
+**Do not try to deliver from this box's own Postfix.** Outbound 25/587/465 are all
+open from here, so it would appear to work, and then land in spam: the address has
+no SPF, no DKIM and no reverse DNS. Relay through something with a reputation.
+
 ## Known weak spots, honestly
 
 - **`nip.io` is a shared convenience whose availability is not ours.** Fine for
@@ -116,3 +136,9 @@ this certificate successfully already; leave that mechanism alone. Check it with
   cloned. A dedicated unprivileged user would be better.
 - **`/docs` and `/openapi.json` are public.** Schema only, no data, but there is
   no reason for them to be reachable in production.
+- **No mail is delivered** until SMTP credentials are set — see above. Until then
+  password reset only works for someone who can read the server's journal.
+- **The rate limits are per-IP**, and Dilijan households share addresses through
+  NAT. The tight zone (10r/m) covers login, signup and forgot; emailed links got
+  their own looser zone precisely because the tight one punished the wrong people.
+  If real users start seeing 429s, that is the first thing to widen.

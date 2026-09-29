@@ -81,7 +81,183 @@ Havak.views = Havak.views || {};
           onclick: function () { Havak.router.go('/signup'); }
         })
       ]),
+      el('p.auth-swap', null, [
+        el('button.linkbtn', {
+          type: 'button',
+          text: 'Forgot your password?',
+          onclick: function () { Havak.router.go('/forgot'); }
+        })
+      ])
     ]));
+  };
+
+  /* ---------- forgot password ----------
+     One field, and a confirmation that says the same thing whether or not the
+     address has an account. The server cannot tell us which it was without
+     handing out its user list, so the screen does not pretend to know. */
+  Havak.views.forgot = function (screen) {
+    var errBox = el('p.err', { hidden: true, role: 'alert' });
+    var email = field('Email', {
+      type: 'email', inputmode: 'email', autocomplete: 'email', placeholder: 'you@example.am'
+    }, 'The address you signed up with.');
+    var inputs = { email: email.input };
+
+    var wrap = el('div.auth-wrap');
+
+    function sent(address) {
+      wrap.innerHTML = '';
+      wrap.appendChild(el('div', null, [
+        brand('Check your inbox.'),
+        el('p.notice', {
+          text: 'If ' + address + ' has a Havak account, a link to set a new ' +
+                'password is on its way. It works once and expires in an hour.'
+        }),
+        el('p.notice.notice-plain', {
+          text: 'Nothing arrived? Look in your spam folder, and check the ' +
+                'address above for typos. You can ask again in a minute.'
+        }),
+        el('button.btn.btn-primary.btn-block', {
+          type: 'button',
+          text: 'Back to log in',
+          onclick: function () { Havak.router.go('/login'); }
+        })
+      ]));
+    }
+
+    var form = el('form.auth-form', {
+      novalidate: true,
+      onsubmit: function (ev) {
+        ev.preventDefault();
+        var btn = form.querySelector('button[type=submit]');
+        btn.disabled = true;
+        var address = email.input.value.trim();
+        auth.forgotPassword(address).then(function (result) {
+          btn.disabled = false;
+          if (!result.ok) { showError(errBox, inputs, result); return; }
+          sent(address);
+        });
+      }
+    }, [
+      email.wrap,
+      errBox,
+      el('button.btn.btn-primary.btn-block', { type: 'submit', text: 'Send me a link' })
+    ]);
+
+    wrap.appendChild(brand('Forgotten your password? We will email you a link.'));
+    wrap.appendChild(form);
+    wrap.appendChild(el('p.auth-swap', null, [
+      el('button.linkbtn', {
+        type: 'button',
+        text: 'Back to log in',
+        onclick: function () { Havak.router.go('/login'); }
+      })
+    ]));
+    screen.appendChild(wrap);
+  };
+
+  /* ---------- set a new password ----------
+     Reached only from the emailed link: #/reset/<token>. The token is the route
+     parameter, so there is nothing to paste and nothing to type wrong. */
+  Havak.views.reset = function (screen, resetToken) {
+    var wrap = el('div.auth-wrap');
+    screen.appendChild(wrap);
+
+    if (!resetToken) {
+      wrap.appendChild(brand('That link is incomplete.'));
+      wrap.appendChild(el('p.notice', {
+        text: 'Open the link in the email again, or ask for a new one. Some mail ' +
+              'apps cut long links in half.'
+      }));
+      wrap.appendChild(el('button.btn.btn-primary.btn-block', {
+        type: 'button',
+        text: 'Ask for a new link',
+        onclick: function () { Havak.router.go('/forgot'); }
+      }));
+      return;
+    }
+
+    var errBox = el('p.err', { hidden: true, role: 'alert' });
+    var pass = field('New password', {
+      type: 'password', autocomplete: 'new-password', placeholder: 'At least 8 characters'
+    });
+    var again = field('Type it again', {
+      type: 'password', autocomplete: 'new-password', placeholder: 'The same password'
+    });
+    var inputs = { pass: pass.input, again: again.input };
+
+    var form = el('form.auth-form', {
+      novalidate: true,
+      onsubmit: function (ev) {
+        ev.preventDefault();
+        /* Checked here and not on the server: a server has no idea what you
+           typed twice, and this is a typo guard, not a security rule. */
+        if (pass.input.value !== again.input.value) {
+          showError(errBox, inputs, { field: 'again', message: 'Those two do not match.' });
+          return;
+        }
+        var btn = form.querySelector('button[type=submit]');
+        btn.disabled = true;
+        auth.resetPassword(resetToken, pass.input.value).then(function (result) {
+          btn.disabled = false;
+          if (!result.ok) { showError(errBox, inputs, result); return; }
+          Havak.ui.toast('Password changed. Log in with the new one.');
+          Havak.router.go('/login');
+        });
+      }
+    }, [
+      pass.wrap,
+      again.wrap,
+      errBox,
+      el('button.btn.btn-primary.btn-block', { type: 'submit', text: 'Set new password' }),
+      el('p.notice.notice-plain', {
+        text: 'Setting a new password signs you out on every other device, so ' +
+              'anyone who should not be in your account is locked out.'
+      })
+    ]);
+
+    wrap.appendChild(brand('Choose a new password.'));
+    wrap.appendChild(form);
+  };
+
+  /* ---------- confirm an email address ----------
+     Reached from #/verify/<token>, and it spends the token on arrival: there is
+     nothing for the user to do here but read the outcome. Works signed out,
+     because this link is often opened on a different phone from the one that
+     signed up. */
+  Havak.views.verify = function (screen, verifyToken) {
+    var wrap = el('div.auth-wrap');
+    screen.appendChild(wrap);
+
+    function done(title, body, tone) {
+      wrap.innerHTML = '';
+      wrap.appendChild(brand(title));
+      wrap.appendChild(el(tone === 'bad' ? 'p.notice.notice-plain' : 'p.notice', { text: body }));
+      wrap.appendChild(el('button.btn.btn-primary.btn-block', {
+        type: 'button',
+        text: auth.signedIn() ? 'Continue' : 'Log in',
+        onclick: function () { Havak.router.go(auth.signedIn() ? Havak.router.home() : '/login'); }
+      }));
+    }
+
+    if (!verifyToken) {
+      done('That link is incomplete.',
+           'Open the link in the email again. Some mail apps cut long links in half.',
+           'bad');
+      return;
+    }
+
+    wrap.appendChild(brand('Confirming your email…'));
+    wrap.appendChild(Havak.ui.loading('One moment'));
+
+    return auth.confirmEmail(verifyToken).then(function (result) {
+      if (result.ok) {
+        done('Email confirmed.',
+             'Thank you — we know we can reach you now. You can close this and ' +
+             'carry on using Havak.');
+      } else {
+        done('That link did not work.', result.message, 'bad');
+      }
+    });
   };
 
   /* ---------- sign up ---------- */

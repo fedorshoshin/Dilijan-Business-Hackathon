@@ -125,6 +125,78 @@ Havak.auth = (function () {
     return store.reset();
   }
 
+  /* ---------- email confirmation and password reset ----------
+     These resolve to the same { ok, field, message } shape the login and sign-up
+     forms already know how to display, so the new screens are the same shape as
+     the old ones and showError() is reused unchanged. */
+
+  function verified() {
+    /* null means "not told" (somebody else's profile), which is not the same as
+       false and must not show a nag. Only an explicit false does. */
+    return !me || me.emailVerified !== false;
+  }
+
+  function resendVerification() {
+    if (!me) return Promise.resolve({ ok: false, message: 'Sign in first.' });
+    return api.resendVerification().then(function (res) {
+      if (res.alreadyVerified) {
+        me.emailVerified = true;
+        return { ok: true, message: 'That address is already confirmed.' };
+      }
+      if (res.throttled) {
+        return { ok: true, message: 'We just sent one — check your inbox, and your spam folder.' };
+      }
+      return { ok: true, message: 'Sent. Check your inbox for the link.' };
+    }, function (err) {
+      return { ok: false, message: err.message };
+    });
+  }
+
+  /* Resolves ok for an unknown address too. The server cannot tell us whether it
+     existed without publishing its user list, so the screen says "if that address
+     has an account, a link is on its way" and means it. */
+  function forgotPassword(email) {
+    var address = normaliseEmail(email);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)) {
+      return Promise.resolve({ ok: false, field: 'email', message: 'That does not look like an email address.' });
+    }
+    return api.forgotPassword(address).then(function () {
+      return { ok: true };
+    }, function (err) {
+      return { ok: false, field: 'email', message: err.message };
+    });
+  }
+
+  function resetPassword(resetToken, pass) {
+    if (String(pass || '').length < 8) {
+      return Promise.resolve({ ok: false, field: 'pass', message: 'Use at least 8 characters.' });
+    }
+    return api.resetPassword(resetToken, String(pass)).then(function () {
+      /* The server invalidated every token for this account, including the one
+         this device may still be holding. Drop it rather than keep a token we
+         know is now dead, so the login screen is reached cleanly. */
+      api.setToken(null);
+      me = null;
+      return { ok: true };
+    }, function (err) {
+      /* Every failure here belongs against the password field: it is the only
+         input on the screen. An expired link is reported there too, because that
+         is where the user is looking. */
+      return { ok: false, field: 'pass', message: err.message };
+    });
+  }
+
+  function confirmEmail(verifyToken) {
+    return api.verifyEmail(verifyToken).then(function (user) {
+      /* If this is the signed-in account, keep the cached profile honest so the
+         banner disappears without needing a reload. */
+      if (me && user && me.id === user.id) me = store.adopt(user);
+      return { ok: true, user: user };
+    }, function (err) {
+      return { ok: false, message: err.message };
+    });
+  }
+
   /* ---------- roles ---------- */
   function hasRole(role, user) {
     var u = user || me;
@@ -159,6 +231,13 @@ Havak.auth = (function () {
     signUp: signUp,
     logIn: logIn,
     logOut: logOut,
+
+    verified: verified,
+    resendVerification: resendVerification,
+    forgotPassword: forgotPassword,
+    resetPassword: resetPassword,
+    confirmEmail: confirmEmail,
+
     hasRole: hasRole,
     setRole: setRole
   };

@@ -140,7 +140,15 @@ Havak.api = (function () {
       roles: w.roles || [],
       place: w.place || '',
       avatarKey: w.avatar_key || null,
-      joinedAt: ms(w.joined_at)
+      joinedAt: ms(w.joined_at),
+
+      /* A boolean for the screens plus the date for anything that wants it.
+         Absent on other people's profiles — whether somebody else has confirmed
+         their address is none of your business — so undefined must not read as
+         "unverified" and put a nag banner on their profile. Hence the `in`
+         check rather than a truthiness test. */
+      emailVerified: 'email_verified_at' in w ? !!w.email_verified_at : null,
+      emailVerifiedAt: ms(w.email_verified_at)
     };
   }
 
@@ -299,6 +307,45 @@ Havak.api = (function () {
     function done() { setToken(null); return true; }
   }
 
+  /* ---------- email confirmation and password reset ----------
+     All four are deliberately plain. The interesting decisions are server-side:
+     /auth/forgot answers the same way whether or not the address has an account,
+     and /auth/reset signs every other device out. */
+
+  function forgotPassword(email) {
+    return request('POST', '/auth/forgot', {
+      auth: false,
+      body: { email: email }
+    }).then(function () { return true; });
+  }
+
+  function resetPassword(resetToken, password) {
+    return request('POST', '/auth/reset', {
+      auth: false,
+      body: { token: resetToken, password: password }
+    }).then(function () { return true; });
+  }
+
+  /* No auth: the link arrives by email and is often opened on a different phone,
+     or in a browser that has never signed in. Requiring a session would strand
+     exactly the people this is for. */
+  function verifyEmail(verifyToken) {
+    return request('POST', '/auth/verify', {
+      auth: false,
+      body: { token: verifyToken }
+    }).then(userFromWire);
+  }
+
+  function resendVerification() {
+    return request('POST', '/auth/verify/resend').then(function (res) {
+      return {
+        sent: !!(res && res.sent),
+        throttled: !!(res && res.throttled),
+        alreadyVerified: !!(res && res.alreadyVerified)
+      };
+    });
+  }
+
   return {
     BASE: BASE,
     ApiError: ApiError,
@@ -311,6 +358,11 @@ Havak.api = (function () {
     signUp: signUp,
     logIn: logIn,
     logOut: logOut,
+
+    forgotPassword: forgotPassword,
+    resetPassword: resetPassword,
+    verifyEmail: verifyEmail,
+    resendVerification: resendVerification,
 
     me: function () { return request('GET', '/me').then(userFromWire); },
     patchMe: function (patch) {

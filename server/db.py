@@ -77,8 +77,8 @@ async def execute(sql: str, *args) -> str:
 async def transaction():
     """Yield a connection inside a transaction.
 
-    Used by the two operations that cannot be a single statement: claiming a
-    report and paying for one.
+    Used by the operations that cannot be a single statement: claiming a
+    report, paying for one, and resetting a password.
     """
     async with pool().acquire() as con:
         async with con.transaction():

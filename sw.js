@@ -7,12 +7,15 @@
    the cache from the network in the background for next time. Bump CACHE when
    the shell changes — the old cache is dropped on activate. */
 
-/* v3: the data layer moved from localStorage to the server, so store.js is gone
+/* v4: email confirmation and password reset landed. No new files, but the reset
+   link lands on a cold install straight from an email, so serving yesterday's
+   JavaScript there would mean the link opens a screen that does not exist yet.
+   v3: the data layer moved from localStorage to the server, so store.js is gone
    and api.js + remote.js take its place. This MUST be bumped whenever the file
    list changes — the strategy below serves the cache first, so an install that
    still held v2 would keep running the old offline-only app forever. Dropping
    the old cache on activate is what makes returning phones pick this up. */
-var CACHE = 'havak-shell-v3';
+var CACHE = 'havak-shell-v4';
 
 var SHELL = [
   'app.html',

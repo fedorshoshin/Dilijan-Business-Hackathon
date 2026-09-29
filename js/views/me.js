@@ -31,6 +31,44 @@ Havak.views = Havak.views || {};
     });
   }
 
+  /* Shown only when the server has explicitly told us the address is not
+     confirmed. auth.verified() returns true when we were not told, so this never
+     appears on a profile where the answer is simply unknown.
+
+     A banner and not a wall: nothing in Havak is blocked on a confirmed address
+     yet, and locking a pilot user out of reporting because our mail relay had a
+     bad afternoon would be the wrong trade. The place to start requiring it is
+     payouts, where the address becomes a money question. */
+  function unverifiedBanner() {
+    if (auth.verified()) return null;
+
+    var line = el('span', {
+      text: 'Confirm your email so we can reach you about your reports.'
+    });
+
+    var resend = el('button.btn.btn-sm', {
+      type: 'button',
+      text: 'Resend',
+      onclick: function () {
+        resend.disabled = true;
+        resend.textContent = 'Sending…';
+        auth.resendVerification().then(function (result) {
+          ui.toast(result.message);
+          /* Left disabled on success: the server throttles a second request for
+             a minute anyway, and a button that can be hammered invites it. */
+          if (result.ok) {
+            resend.textContent = 'Sent';
+          } else {
+            resend.disabled = false;
+            resend.textContent = 'Resend';
+          }
+        });
+      }
+    });
+
+    return el('div.notice.notice-act', null, [line, resend]);
+  }
+
   Havak.views.me = function (screen) {
     var user = auth.current();
     return tally(user).then(function (t) {
@@ -125,6 +163,7 @@ Havak.views = Havak.views || {};
 
     screen.appendChild(el('div.wrap.pad', null, [
       head,
+      unverifiedBanner(),
       cells.length ? stats : null,
       roles,
       actions

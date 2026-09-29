@@ -1182,6 +1182,19 @@ body.app.no-tabs #screen { padding-bottom: calc(var(--safe-b) + var(--s-4)); }
 .linkbtn-danger { display: block; margin: var(--s-3) auto 0; color: var(--red); }
 .notice-plain { background: var(--bg); border-color: var(--line); color: var(--muted); }
 
+/* A notice with one action in it — the "confirm your email" banner. Wraps rather
+   than shrinks: at 390px the sentence takes the full width and the button drops
+   underneath it at full tap size, instead of both being squeezed. */
+.notice-act {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3);
+  line-height: 1.5;
+}
+.notice-act > span { flex: 1 1 14ch; }
+.notice-act > .btn { flex: 0 0 auto; }
+
 /* ---------- report list ---------- */
 .rlist { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-3); }
 .rcard {

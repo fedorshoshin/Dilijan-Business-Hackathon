@@ -194,6 +194,47 @@ lands, because it stops being true.
 If you use Supabase Auth, the `users` row should be created by a trigger on
 signup so a user can never exist without a profile.
 
+### Confirming an address and resetting a password — added 2026-09-29
+
+Both are one-time links carrying a 32-byte random token. Only `sha256(token)` is
+stored (`sql/003_email.sql`), so a leaked `email_tokens` table is a table of dead
+hashes rather than live keys to every account.
+
+- `POST /auth/forgot` `{email}` → always `{ok: true}`
+- `POST /auth/reset` `{token, password}` → sets the password, signs every device out
+- `POST /auth/verify` `{token}` → returns the updated profile. **No session required**
+- `POST /auth/verify/resend` → authenticated, throttled to one per minute per account
+- the profile now carries `email_verified_at` (null when unconfirmed)
+
+Three things here are load-bearing and easy to get wrong:
+
+**`/auth/forgot` must answer identically for an address with no account** — and
+identically in *timing*, not just in content. The first version did the minting
+and sending inline, which made a registered address answer in 1.7-2.5s against
+0.8s for an unregistered one: a usable account oracle that needs no reading of
+the response body. Everything that only happens for a real account is now a
+background task.
+
+**`/auth/verify` is deliberately unauthenticated.** The link arrives by email and
+is routinely opened on a different phone from the one that signed up, or in a
+browser that has never signed in. Requiring a session strands exactly the people
+the link is for. The token *is* the proof.
+
+**A reset ends existing sessions.** Tokens are stateless JWTs, so without this a
+thief who already had your password kept their session for the remaining 59 days
+after you "locked them out" — the reset would have been theatre. `users
+.tokens_valid_from` is a watermark the token's own `iat` claim is checked against,
+which also gives us the per-account and global revoke that §9 listed as open.
+
+Links point at the published PWA (`APP_URL`), never at the API: the API serves
+JSON and a static host has no rewrite rules, so they are hash routes
+(`#/reset/<token>`) that cannot 404 on refresh.
+
+Nothing is blocked on a confirmed address yet — it is a banner on the profile,
+not a wall. Locking a pilot user out of reporting because a mail relay had a bad
+afternoon is the wrong trade. Payouts are the right place to start requiring it,
+because that is where the address becomes a money question.
+
 ## 6. Media
 
 Rows hold `bucket_key`; bytes live in the bucket. The client needs either:
@@ -269,9 +310,19 @@ offline. The database decides (§3.1) and the client tells the loser plainly.
   index, so a replayed offline write returns the original row instead of
   duplicating it.
 
+### Settled 2026-09-29
+
+- **The deployed base URL** is `https://130.51.22.253.nip.io:8443`, in `js/api.js`.
+  The hostname embeds the server's IP, so if that changes, `api.js`, the nginx
+  `server_name` and `ALLOWED_ORIGINS` all move together.
+- **Session revocation**, which this list had as a gap: `users.tokens_valid_from`
+  against the token's `iat`. See §5.
+
 ### Still open
 
-- **The deployed base URL.** Blocks `api.js`.
+- **Mail delivery.** The flows are built and `EMAIL_BACKEND=log` proves them, but
+  nothing is delivered until SMTP credentials are set. Until then the app says
+  "check your inbox" and the link is only in the server journal.
 - **Who owns deletion requests?** Real names, photos and GPS of real people.
   `DESIGN.md` open decision #7 — not a coding task, but it blocks going live.
 - **Do you want PostGIS?** The client sorts the cleaner's board by distance. It

@@ -16,7 +16,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from . import db, errors, storage
+from . import db, errors, mail, storage
 from .routers import auth, media, money, reports
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -44,6 +44,19 @@ async def lifespan(app: FastAPI):
     await db.connect()
     await storage.connect()
     logger.info("havak api ready; allowed origins: %s", _origins() or "(none)")
+
+    # Said loudly, because the failure it describes is invisible from the outside:
+    # the app tells people to check their inbox and the API answers 200, while
+    # nothing is actually delivered. Better a line in the journal every restart
+    # than a pilot user waiting on an email that was never sent.
+    if mail.BACKEND == "log":
+        logger.warning(
+            "EMAIL_BACKEND=log — confirmation and password-reset emails are NOT "
+            "being delivered; the links are written to this log instead. Set "
+            "EMAIL_BACKEND=smtp and the SMTP_ settings to send them for real."
+        )
+    else:
+        logger.info("email backend: %s via %s", mail.BACKEND, mail.SMTP_HOST or "(unset)")
     try:
         yield
     finally:

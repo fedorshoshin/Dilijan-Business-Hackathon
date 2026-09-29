@@ -53,6 +53,21 @@ class ProfilePatch(BaseModel):
         return sorted(set(v))
 
 
+class ForgotPassword(BaseModel):
+    email: EmailStr
+
+
+class ResetPassword(BaseModel):
+    token: str = Field(min_length=16, max_length=200)
+    # Same floor as signup. Enforced in both places because this endpoint is a
+    # second, entirely separate door onto the password column.
+    password: str = Field(min_length=8, max_length=200)
+
+
+class ConfirmEmail(BaseModel):
+    token: str = Field(min_length=16, max_length=200)
+
+
 class NewReport(BaseModel):
     title: str = Field(min_length=3, max_length=120)
     description: str = Field(min_length=1, max_length=2000)

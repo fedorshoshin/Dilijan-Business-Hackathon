@@ -155,6 +155,14 @@ Havak.shell = (function () {
 
     r.define('/login',  { view: Havak.views.login,  guestOnly: true });
     r.define('/signup', { view: Havak.views.signup, guestOnly: true });
+    r.define('/forgot', { view: Havak.views.forgot, guestOnly: true });
+
+    /* Neither guarded nor guest-only, deliberately. These two are reached from a
+       link in an email, which may be opened on a phone that has never signed in
+       or on one that is already signed in as somebody. Marking them guestOnly
+       would bounce a signed-in user off their own reset link and do nothing. */
+    r.define('/reset',  { view: Havak.views.reset });
+    r.define('/verify', { view: Havak.views.verify });
     r.define('/feed',   { view: Havak.views.feed,   auth: true });
     r.define('/spot',   { view: Havak.views.spot,   auth: true });
     r.define('/report', {
