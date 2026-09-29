@@ -36,8 +36,15 @@ BACKEND = os.getenv("EMAIL_BACKEND", "log").strip().lower()
 
 SMTP_HOST = os.getenv("SMTP_HOST", "")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER = os.getenv("SMTP_USER", "")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+SMTP_USER = os.getenv("SMTP_USER", "").strip()
+
+# Whitespace stripped throughout, not just at the ends. Google shows an App
+# Password as four spaced groups ("abcd efgh ijkl mnop") and that is exactly how
+# it gets pasted into a config file, but SMTP AUTH wants the 16 characters with
+# nothing between them — so the obvious thing to paste is the thing that fails,
+# with an authentication error that says nothing about spaces. No app password
+# from any provider contains one, so there is nothing legitimate to lose here.
+SMTP_PASSWORD = "".join(os.getenv("SMTP_PASSWORD", "").split())
 
 # Shown as the sender. Many relays insist this match an address or domain you
 # have proven you own, and quietly reject everything otherwise.
