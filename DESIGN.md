@@ -355,7 +355,7 @@ Shown to the cleaner *before* they claim, so the offer is honest.
 Ordered so each phase is demoable on its own and nothing is built before the
 thing it depends on. `Done when:` is the check to run before ticking it.
 
-**Progress: Phases 0, 1, 1.5 and 2 are built and verified** (2026-09-21). 51 automated checks
+**Progress: Phases 0, 1, 1.5 and 2 are built and verified** (2026-09-21); **Phase 3.5** went live as our own FastAPI server (2026-09-29) and **Phase 3** on Cloudflare R2 (2026-09-30). 51 automated checks
 drive a real Chromium at 390×844 and cover every "done when" below for those
 phases — guard, session, role toggles, offline launch, corrupt-storage fallback,
 report validation, map placement, hazard path, payout arithmetic, cross-role
@@ -408,16 +408,20 @@ this after Phase 6 would mean rewriting every view.
 | 2.4 ✅ | Reporter dashboard: my reports + live status of each | Statuses match the lifecycle in 4.3 |
 | 2.5 ✅ | Report detail screen, shared by all three roles | Same route works signed in as any role |
 
-### Phase 3 — Camera and media *(riskiest piece; isolate it)*
+### Phase 3 — Camera and media *(built 2026-09-30 on Cloudflare R2)*
+
+Verified in Chromium at 390 px against the published site and the live R2
+bucket: 13 + 3 automated checks, including real uploads, reads and deletes.
+Still to do on real phones (task 7.2): the camera opening, and iOS video.
 
 | # | Task | Done when |
 | --- | --- | --- |
-| 3.1 | `media.js`: put/get/delete blobs in IndexedDB | 50 MB video stored and played back after relaunch |
-| 3.2 | **Camera capture** — `capture="environment"`, multiple photos per report | Tapping "Add photo" opens the camera, not a file browser |
-| 3.3 | Video attach with a poster frame | Plays inline on iOS and Android, no layout jump |
-| 3.4 | Downscale photos before storing; cap count and total size | Quota errors surface as a clear message, never a silent loss |
-| 3.5 | Before/after gallery on the report detail, swipeable | Swipes with a thumb on a real phone |
-| 3.6 | **Profile picture** — take or pick one, square-crop, downscale to 256px, stored as `avatarKey` | Set on the Me screen, appears everywhere that name appears; removing it falls back to initials |
+| 3.1 ✅ | `media.js`: IndexedDB outbox — every file is saved on the phone before it uploads, retried on launch and on reconnect | Photo survives a failed upload and goes later ✔; a 50 MB video relaunch was not run — same code path, larger blob |
+| 3.2 ✅ | **Camera capture** — `capture="environment"`, plus "From phone" for several photos or a video at once | Input has `capture=environment` ✔ · *real phone: pending 7.2* |
+| 3.3 ✅ | Video attach; poster is the first frame via `#t=0.1`, in a fixed 4:3 box | WebM uploaded, streamed back from R2, frame shown ✔ · *iOS: pending 7.2* |
+| 3.4 ✅ | Photos → JPEG ≤1600 px (EXIF/GPS stripped); video ≤50 MB; ≤12 per spot and kind | 4000×3000 stored as 1600×1200 ✔; 51 MB video and a PDF refused with a message ✔ |
+| 3.5 ✅ | Before/after strips on the spot screen, scroll-snap, "1 / 2" counter; first photo on report cards | Swipes, counter updates, no sideways scroll at 390 px ✔ |
+| 3.6 ✅ | **Profile picture** — square-crop to 256 px, signed URL, initials underneath as the fallback | 256×256 from R2 on the Me screen ✔; removal deletes the file ✔ |
 
 ### Phase 3.5 — Backend cutover *(the pilot phase; blocked on decision #6)*
 
