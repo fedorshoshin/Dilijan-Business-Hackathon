@@ -311,7 +311,7 @@ Havak.media = (function () {
       }),
       el('button.btn.btn-ghost', {
         type: 'button',
-        text: opts.libraryLabel || 'Choose from phone',
+        text: opts.libraryLabel || 'From phone',
         onclick: function () { lib.click(); }
       })
     ]);

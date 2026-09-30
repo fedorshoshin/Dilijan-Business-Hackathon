@@ -237,26 +237,37 @@ because that is where the address becomes a money question.
 
 ## 6. Media
 
-Rows hold `bucket_key`; bytes live in the bucket. The client needs either:
+Rows hold `bucket_key`; bytes live in **Cloudflare R2** (settled 2026-09-30),
+one bucket `havak`, two prefixes: `report-media/<report>/<before|after>/<id>.<ext>`
+and `avatars/<user>/<id>.jpg`. `server/storage.py` presigns S3 SigV4 URLs
+locally — no SDK, no network call per signature.
 
-- **signed upload URLs** — client asks the server for one, PUTs the file
-  directly. Preferred: bytes never pass through your API.
-- or direct upload with the anon key, with bucket policies restricting writes to
-  the signed-in user's own folder.
+**Upload** is two steps, and bytes never pass through our API:
 
-Reads should be signed URLs with a sensible expiry, or a public bucket if you
-decide report photos are public. Tell me which — it changes how the client
-caches them offline.
+1. `POST /media/upload-url` (or `POST /me/avatar/upload-url`) → a signed PUT URL,
+   valid 15 minutes.
+2. The browser PUTs the file straight to R2. This is why the bucket needs a
+   CORS rule for the published site's origin.
 
-Expect photos around 200–800 KB after client-side downscaling, and videos up to
-~50 MB. The client caps count and size before upload.
+An avatar needs a third call, `PATCH /me {avatar_key}`, which only accepts a key
+the server minted under the caller's own id, and deletes the previous file.
 
-**Profile pictures** are a second, separate bucket (`avatars`), not the report
-media table: one row per user, overwritten on change, referenced by
-`users.avatar_key`. Keep it **public-read** even if report media is signed — an
-avatar appears next to every name on every list, and re-signing dozens of URLs
-per screen is a cost with no privacy gained. Writes restricted to the owner's
-own path. The client downscales to 256×256 before upload, so these are ~20 KB.
+**Reads are signed** (6 hours), for everything, avatars included. R2 has no
+per-object public ACL: making avatars public would mean a public hostname on the
+whole bucket, which would publish every report photo with them. Signing is
+local HMAC, so every response simply carries the URLs: users get `avatar_url`,
+reports get `cover_url` (first "before" photo) and `media_count`.
+
+**Client** (`js/media.js`): photos are re-encoded to JPEG, ≤1600 px on the long
+edge (~200–500 KB, EXIF and GPS stripped); avatars are centre-cropped to 256 px;
+video is not re-encoded but capped at 50 MB; at most 12 files per spot and kind
+(the server enforces the same). Every file sits in an IndexedDB outbox until R2
+has it, so a closed app or a dead signal does not lose a photo; the outbox id is
+the `client_id`, so a retry cannot duplicate a row.
+
+**Known gap:** the row is written before the PUT. If a phone never finishes the
+upload (uninstalled mid-way), the row points at nothing. The client shows "Not
+uploaded" in place of a broken image; nothing sweeps these yet.
 
 ## 7. Errors
 
@@ -320,9 +331,11 @@ offline. The database decides (§3.1) and the client tells the loser plainly.
 
 ### Still open
 
-- **Mail delivery.** The flows are built and `EMAIL_BACKEND=log` proves them, but
-  nothing is delivered until SMTP credentials are set. Until then the app says
-  "check your inbox" and the link is only in the server journal.
+- **R2 credentials and CORS.** Uploads are built and deployed, but R2 refuses
+  them until `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` are in `server/.env` and
+  the bucket's CORS rule is active. Until then photos wait in each phone's
+  outbox, labelled "Waiting to upload", and go as soon as both are in place.
+  (Mail delivery, the previous item here, is settled: Gmail SMTP since 2026-09-29.)
 - **Who owns deletion requests?** Real names, photos and GPS of real people.
   `DESIGN.md` open decision #7 — not a coding task, but it blocks going live.
 - **Do you want PostGIS?** The client sorts the cleaner's board by distance. It
