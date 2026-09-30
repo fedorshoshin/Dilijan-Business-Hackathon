@@ -28,6 +28,7 @@ Havak.views = Havak.views || {};
         type: 'button',
         onclick: function () { Havak.router.go('/spot/' + report.id); }
       }, [
+        ui.thumb(report),
         el('div.rcard-top', null, [
           ui.statusTag(report.status),
           report.hazardous ? el('span.tag.tag-hazard', { text: 'Hazardous' }) : null,

@@ -93,6 +93,10 @@ class NewDonation(BaseModel):
     client_id: UUID | None = None
 
 
+IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
+MEDIA_TYPES = IMAGE_TYPES | {"video/mp4", "video/quicktime", "video/webm"}
+
+
 class UploadRequest(BaseModel):
     """Ask for a signed URL to PUT a file straight to the bucket."""
 
@@ -111,8 +115,11 @@ class UploadRequest(BaseModel):
     @field_validator("mime")
     @classmethod
     def image_or_video(cls, v: str) -> str:
-        if not (v.startswith("image/") or v.startswith("video/")):
-            raise ValueError("must be an image or video type")
+        # A closed list, because the type decides the file extension in the
+        # bucket and the tag the browser renders it with. The client re-encodes
+        # every photo to JPEG, so only video arrives in its phone's own format.
+        if v not in MEDIA_TYPES:
+            raise ValueError("must be a JPEG, PNG or WebP photo, or an MP4, MOV or WebM video")
         return v
 
 
@@ -122,6 +129,6 @@ class AvatarRequest(BaseModel):
     @field_validator("mime")
     @classmethod
     def image_only(cls, v: str) -> str:
-        if not v.startswith("image/"):
-            raise ValueError("must be an image type")
+        if v not in IMAGE_TYPES:
+            raise ValueError("must be a JPEG, PNG or WebP image")
         return v

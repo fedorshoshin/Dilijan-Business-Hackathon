@@ -140,6 +140,9 @@ Havak.api = (function () {
       roles: w.roles || [],
       place: w.place || '',
       avatarKey: w.avatar_key || null,
+      /* Signed, and good for six hours. Fine for a session; a stale one just
+         fails to load and ui.avatar falls back to the initials underneath. */
+      avatarUrl: w.avatar_url || null,
       joinedAt: ms(w.joined_at),
 
       /* A boolean for the screens plus the date for anything that wants it.
@@ -189,10 +192,12 @@ Havak.api = (function () {
       status: w.status,
       rating: w.rating == null ? null : w.rating,
       disputed: !!w.disputed,
-      /* Photos are a separate call (GET /reports/{id}/media) because the URLs
-         are signed and expire. Views only check whether the array is empty, so
-         an empty array here is honest rather than a placeholder. */
+      /* The full set of photos is a separate call (GET /reports/{id}/media),
+         because the URLs are signed and expire. A list only needs the first
+         "before" photo for its card, and a count. */
       media: [],
+      coverUrl: w.cover_url || null,
+      mediaCount: w.media_count || 0,
       claim: claimFromWire(w.claim, w.id),
       createdAt: ms(w.created_at),
       cleanedAt: ms(w.cleaned_at),
@@ -263,6 +268,37 @@ Havak.api = (function () {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (ch) {
       var r = Math.random() * 16 | 0;
       return (ch === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
+  }
+
+  function mediaFromWire(w) {
+    return {
+      id: w.id,
+      ownerId: w.owner_id,
+      kind: w.kind,
+      mime: w.mime,
+      url: w.url,
+      createdAt: ms(w.created_at)
+    };
+  }
+
+  /* The second half of every upload: straight to the bucket, not to our API.
+     No Authorization header — the signature is in the URL — and the file's own
+     type, so R2 stores it with the one the <img> or <video> will need. */
+  function putBlob(url, blob, mime) {
+    return fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': mime },
+      body: blob
+    }).then(function (res) {
+      if (res.ok) return true;
+      throw new ApiError('storage_failed',
+        res.status === 403
+          ? 'The upload link was refused. Try again.'
+          : 'The file did not upload. Try again.',
+        res.status);
+    }, function () {
+      throw new ApiError('offline', OFFLINE_MESSAGE, 0);
     });
   }
 
@@ -394,6 +430,33 @@ Havak.api = (function () {
     },
     deleteReport: function (reportId) {
       return request('DELETE', '/reports/' + encodeURIComponent(reportId)).then(function () { return true; });
+    },
+
+    /* ---------- photos, video, avatars ----------
+       Two steps each: ask our API for a signed URL, then PUT the bytes to R2. */
+    uploadMedia: function (reportId, kind, blob, mime, clientId) {
+      return request('POST', '/media/upload-url', {
+        body: { report_id: reportId, kind: kind, mime: mime, client_id: clientId || uuid() }
+      }).then(function (res) {
+        return putBlob(res.upload_url, blob, mime).then(function () { return res.media_id; });
+      });
+    },
+    reportMedia: function (reportId) {
+      return request('GET', '/reports/' + encodeURIComponent(reportId) + '/media')
+        .then(function (list) { return (list || []).map(mediaFromWire); });
+    },
+    deleteMedia: function (mediaId) {
+      return request('DELETE', '/media/' + encodeURIComponent(mediaId)).then(function () { return true; });
+    },
+    uploadAvatar: function (blob, mime) {
+      return request('POST', '/me/avatar/upload-url', { body: { mime: mime } }).then(function (res) {
+        return putBlob(res.upload_url, blob, mime).then(function () {
+          return request('PATCH', '/me', { body: { avatar_key: res.bucket_key } });
+        });
+      }).then(userFromWire);
+    },
+    deleteAvatar: function () {
+      return request('DELETE', '/me/avatar').then(function () { return true; });
     },
 
     /* The two the client may never do for itself (BACKEND.md §4) */

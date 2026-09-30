@@ -190,6 +190,9 @@ Havak.shell = (function () {
 
     installer();
     registerWorker();
+
+    /* Photos left on the phone by a closed app or a dead signal go now. */
+    Havak.media.flush();
   }
 
   return { start: start, syncTabs: syncTabs };

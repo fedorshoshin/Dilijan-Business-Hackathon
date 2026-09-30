@@ -2,7 +2,11 @@
 
    Everything a cleaner needs to decide whether to take the job, asked in the
    order a person standing in front of a rubbish pile would answer it: where,
-   what, how bad, how long, is it dangerous. */
+   what, how bad, how long, is it dangerous.
+
+   Photos are prepared (shrunk, stripped of EXIF) as soon as they are picked,
+   held in memory while the form is filled in, and handed to the outbox the
+   moment the report exists — they need its id before they can upload. */
 
 window.Havak = window.Havak || {};
 Havak.views = Havak.views || {};
@@ -16,6 +20,7 @@ Havak.views = Havak.views || {};
   var auth = Havak.auth;
   var geo = Havak.geo;
   var money = Havak.money;
+  var media = Havak.media;
 
   var LEVELS = [
     { n: 1, label: 'A few items' },
@@ -109,6 +114,43 @@ Havak.views = Havak.views || {};
       rows: '3', maxlength: '300', required: true,
       placeholder: 'What is there? Bottles, building waste, something worse?',
       oninput: clearError
+    });
+
+    /* ---------- photos ---------- */
+    var shots = [];                              /* { blob, mime, url } */
+    var shotsBox = el('div');
+    var shotsNote = el('p.field-hint', {
+      text: 'Optional, but a cleaner decides faster with a picture. Videos up to 50 MB.'
+    });
+
+    function drawShots() {
+      shotsBox.textContent = '';
+      if (!shots.length) return;
+      shotsBox.appendChild(media.strip(shots, {
+        small: true,
+        label: 'Photos to post',
+        canRemove: function () { return true; },
+        onRemove: function (item) {
+          URL.revokeObjectURL(item.url);
+          shots.splice(shots.indexOf(item), 1);
+          drawShots();
+        }
+      }));
+    }
+
+    var picker = media.pickButtons({
+      onFiles: function (files) {
+        shotsNote.textContent = 'Preparing…';
+        media.prepareAll(files, media.MAX_FILES - shots.length).then(function (res) {
+          res.items.forEach(function (item) {
+            item.url = URL.createObjectURL(item.blob);
+            shots.push(item);
+          });
+          shotsNote.textContent = res.problem ||
+            (shots.length + (shots.length === 1 ? ' file' : ' files') + ' ready to post.');
+          drawShots();
+        });
+      }
     });
 
     /* ---------- how bad ---------- */
@@ -250,8 +292,20 @@ Havak.views = Havak.views || {};
           media: [],
           status: 'open'
         }).then(function (report) {
-          ui.toast('Reported. Cleaners can see it now.');
-          Havak.router.go('/spot/' + report.id, true);
+          if (!shots.length) {
+            ui.toast('Reported. Cleaners can see it now.');
+            Havak.router.go('/spot/' + report.id, true);
+            return;
+          }
+          /* The report is saved; photos going wrong now must not look like
+             the report failed. They are on the phone and will keep trying. */
+          return media.queue(report.id, 'before', shots).then(function () {
+            ui.toast('Reported. Your photos are uploading.');
+          }, function (err) {
+            ui.toast(err.message || 'Reported, but the photos could not be saved.');
+          }).then(function () {
+            Havak.router.go('/spot/' + report.id, true);
+          });
         }).catch(function (err) {
           submit.disabled = false;
           submit.textContent = 'Post this report';
@@ -276,7 +330,13 @@ Havak.views = Havak.views || {};
       el('section.panel', null, [
         el('div.panel-head', null, [ el('h2', { text: 'What is there?' }) ]),
         el('label.field', null, [ el('span', { text: 'Short name' }), title ]),
-        el('label.field', null, [ el('span', { text: 'Description' }), desc ])
+        el('label.field', null, [ el('span', { text: 'Description' }), desc ]),
+        el('div.field', null, [
+          el('span.field-label', { text: 'Photos' }),
+          shotsNote,
+          shotsBox,
+          picker
+        ])
       ]),
 
       el('section.panel', null, [
@@ -292,8 +352,7 @@ Havak.views = Havak.views || {};
 
       payoutBox,
       errBox,
-      submit,
-      el('p.phase-note', { text: 'Photos and video attach here in Phase 3.' })
+      submit
     ]);
 
     screen.appendChild(el('div.wrap.pad', null, [

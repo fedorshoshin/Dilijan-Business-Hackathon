@@ -5,12 +5,13 @@ survives an app relaunch.
 """
 
 import logging
+import re
 from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, BackgroundTasks
 
-from .. import db, mail, security
+from .. import db, mail, security, storage
 from ..errors import NOT_AUTHORISED, NOT_FOUND, VALIDATION_FAILED, ApiError
 from ..models import ConfirmEmail, ForgotPassword, LogIn, ProfilePatch, ResetPassword, SignUp
 from ..security import CurrentUser
@@ -22,9 +23,12 @@ router = APIRouter(tags=["auth"])
 PROFILE = "id, name, email, roles, place, avatar_key, joined_at, email_verified_at"
 PUBLIC = "id, name, roles, place, avatar_key, joined_at"
 
+# <user uuid>/<upload uuid>.<ext>, as minted by POST /me/avatar/upload-url.
+AVATAR_KEY = re.compile(r"[0-9a-f-]{36}/[0-9a-f-]{36}\.(jpg|png|webp)")
+
 
 def _session(user: dict) -> dict:
-    return {"token": security.issue_token(user["id"]), "user": user}
+    return {"token": security.issue_token(user["id"]), "user": storage.sign_urls(user)}
 
 
 @router.post("/auth/signup")
@@ -82,14 +86,14 @@ async def logout(user: dict = CurrentUser):
 
 @router.get("/me")
 async def me(user: dict = CurrentUser):
-    return user
+    return storage.sign_urls(user)
 
 
 @router.patch("/me")
 async def update_me(body: ProfilePatch, user: dict = CurrentUser):
     fields = body.model_dump(exclude_unset=True)
     if not fields:
-        return user
+        return storage.sign_urls(user)
 
     if "name" in fields:
         fields["name"] = (fields["name"] or "").strip()
@@ -97,15 +101,29 @@ async def update_me(body: ProfilePatch, user: dict = CurrentUser):
             raise ApiError(VALIDATION_FAILED, "A name is required.")
     if "place" in fields:
         fields["place"] = (fields["place"] or "").strip() or None
+    if fields.get("avatar_key"):
+        # Only a key this server minted for this user. Anything else would let a
+        # client point its avatar at someone's report photo and have us sign
+        # reads of it for everybody who sees the name.
+        if not AVATAR_KEY.fullmatch(fields["avatar_key"]) or not fields[
+            "avatar_key"
+        ].startswith(f"{user['id']}/"):
+            raise ApiError(VALIDATION_FAILED, "That picture was not uploaded by you.")
 
     # Built from a fixed allow-list of column names, never from user input.
     columns = [c for c in ("name", "place", "roles", "avatar_key") if c in fields]
     assignments = ", ".join(f"{c} = ${i + 2}" for i, c in enumerate(columns))
-    return await db.fetchrow(
+    row = await db.fetchrow(
         f"update users set {assignments} where id = $1 returning {PROFILE}",
         user["id"],
         *[fields[c] for c in columns],
     )
+    # Each upload gets a fresh key, so replacing or clearing a picture leaves
+    # the old blob behind unless we remove it here.
+    old = user.get("avatar_key")
+    if "avatar_key" in fields and old and old != fields["avatar_key"]:
+        await storage.delete(storage.AVATAR_BUCKET, old)
+    return storage.sign_urls(row)
 
 
 @router.get("/users/{user_id}")
@@ -114,7 +132,7 @@ async def public_profile(user_id: UUID, _: dict = CurrentUser):
     row = await db.fetchrow(f"select {PUBLIC} from users where id = $1", user_id)
     if not row:
         raise ApiError(NOT_FOUND, "No such person.")
-    return row
+    return storage.sign_urls(row)
 
 
 # ---------------------------------------------------------------------------
@@ -225,7 +243,7 @@ async def verify_email(body: ConfirmEmail):
              where id = $1 returning {PROFILE}""",
         row["user_id"],
     )
-    return user
+    return storage.sign_urls(user)
 
 
 @router.post("/auth/verify/resend")

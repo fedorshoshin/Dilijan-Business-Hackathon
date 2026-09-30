@@ -16,6 +16,7 @@ Havak.views = Havak.views || {};
   var store = Havak.store;
   var auth = Havak.auth;
   var geo = Havak.geo;
+  var media = Havak.media;
 
   var LEVEL_WORD = ['', 'A few items', 'A bagful', 'Several bags', 'A big pile', 'A dumping ground'];
 
@@ -24,6 +25,97 @@ Havak.views = Havak.views || {};
       el('dt', { text: label }),
       el('dd', { text: value })
     ]);
+  }
+
+  /* Before and after, each a swipeable strip. The reporter can add to
+     "before", the cleaner working the spot to "after" — the same rule the
+     server enforces; this only decides which buttons to show. */
+  function photos(report, me, mine, iAmCleaner) {
+    var box = el('section.spot-photos', { 'aria-label': 'Photos' });
+    var urls = [];
+    var painted = false;
+
+    function load(state) {
+      return media.forReport(report.id).then(function (got) {
+        if (painted && !box.isConnected) return;        /* left the screen */
+        painted = true;
+        urls.forEach(function (u) { URL.revokeObjectURL(u); });
+        urls = got.pending.map(function (p) { return p.url; });
+        got.pending.forEach(function (p) { p.pending = state || 'Uploading…'; });
+
+        box.textContent = '';
+        if (got.failed) {
+          box.appendChild(el('p.field-hint', { text: 'Photos could not be loaded right now.' }));
+        }
+        group(box, got, 'before', 'Before', mine);
+        group(box, got, 'after', 'After', iAmCleaner);
+
+        /* Something still on the phone: push it, then show the result. If it
+           cannot go yet, say so rather than spin — the outbox tries again on
+           the next launch and whenever the phone comes back online. */
+        if (got.pending.length && !state) {
+          media.flush().then(function (ok) {
+            if (box.isConnected) load(ok ? null : 'Waiting to upload');
+          });
+        }
+      });
+    }
+
+    function group(into, got, kind, heading, canAdd) {
+      var items = got.uploaded.concat(got.pending).filter(function (m) { return m.kind === kind; });
+      if (!items.length && !canAdd) return;
+
+      var note = el('p.field-hint', {
+        text: items.length ? '' : (kind === 'before'
+          ? 'Add a photo so cleaners can see what they are taking on.'
+          : 'Add a photo of the cleaned spot — the reporter confirms from it.')
+      });
+      if (!note.textContent) note.hidden = true;
+
+      into.appendChild(el('div.shot-group', null, [
+        el('h2.shot-head', { text: heading }),
+        note,
+        items.length
+          ? media.strip(items, {
+              label: heading + ' photos',
+              canRemove: function (m) { return !m.pending && me && m.ownerId === me.id; },
+              onRemove: remove
+            })
+          : null,
+        canAdd
+          ? media.pickButtons({
+              onFiles: function (files) {
+                var room = media.MAX_FILES - items.length;
+                note.hidden = false;
+                note.textContent = 'Preparing…';
+                media.prepareAll(files, room).then(function (res) {
+                  if (res.problem) ui.toast(res.problem);
+                  if (!res.items.length) { note.textContent = res.problem || ''; return null; }
+                  return media.queue(report.id, kind, res.items).then(function () { return load(); });
+                }).catch(function (err) {
+                  note.textContent = err.message || 'Those could not be added.';
+                });
+              }
+            })
+          : null
+      ]));
+    }
+
+    function remove(item, fig) {
+      if (!window.confirm('Remove this ' + (/^video/.test(item.mime) ? 'video' : 'photo') + '?')) return;
+      fig.classList.add('is-busy');
+      Havak.api.deleteMedia(item.id).then(function () {
+        ui.toast('Removed.');
+        load();
+      }, function (err) {
+        fig.classList.remove('is-busy');
+        ui.toast(err.message || 'That could not be removed.');
+      });
+    }
+
+    box.appendChild(ui.loading('Loading photos…'));
+    load();
+    return box;
   }
 
   Havak.views.spot = function (screen, reportId) {
@@ -102,6 +194,8 @@ Havak.views = Havak.views || {};
 
       el('p.spot-desc', { text: report.desc }),
 
+      photos(report, me, mine, iAmCleaner),
+
       Havak.map.render({ reports: [report] }),
 
       el('p.spot-where', { text: report.loc.label }),
@@ -119,8 +213,8 @@ Havak.views = Havak.views || {};
       ]),
 
       el('p.phase-note', {
-        text: 'Photos arrive in Phase 3. Claiming lands in Phase 4, confirming ' +
-              'in Phase 5, funding this spot in Phase 6.'
+        text: 'Claiming lands in Phase 4, confirming in Phase 5, funding this ' +
+              'spot in Phase 6.'
       })
     ]);
 

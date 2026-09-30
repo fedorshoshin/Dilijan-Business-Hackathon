@@ -223,6 +223,30 @@ Havak.auth = (function () {
     });
   }
 
+  /* ---------- profile picture ---------- */
+  function setPicture(blob) {
+    if (!me) return Promise.resolve({ ok: false, message: 'Please sign in again.' });
+    return api.uploadAvatar(blob, 'image/jpeg').then(function (user) {
+      me = store.adopt(user);
+      return { ok: true };
+    }, function (err) {
+      return { ok: false, message: err.message || 'Your picture did not upload. Try again.' };
+    });
+  }
+
+  function clearPicture() {
+    if (!me) return Promise.resolve({ ok: false, message: 'Please sign in again.' });
+    return api.deleteAvatar().then(function () {
+      /* Set directly: the cache's merge treats null as "unchanged", which is
+         right for a thinner copy of a user and wrong for a deliberate removal. */
+      me.avatarKey = null;
+      me.avatarUrl = null;
+      return { ok: true };
+    }, function (err) {
+      return { ok: false, message: err.message || 'That did not work. Try again.' };
+    });
+  }
+
   return {
     ROLES: ROLES,
     init: init,
@@ -239,6 +263,9 @@ Havak.auth = (function () {
     confirmEmail: confirmEmail,
 
     hasRole: hasRole,
-    setRole: setRole
+    setRole: setRole,
+
+    setPicture: setPicture,
+    clearPicture: clearPicture
   };
 })();

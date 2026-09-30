@@ -13,7 +13,7 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Query
 
-from .. import db, payout
+from .. import db, payout, storage
 from ..errors import ALREADY_CLAIMED, NOT_AUTHORISED, NOT_FOUND, VALIDATION_FAILED, ApiError
 from ..models import Confirm, NewReport
 from ..security import CurrentUser
@@ -37,7 +37,11 @@ FIELDS = """
         'cleaner', jsonb_build_object(
             'id', cu.id, 'name', cu.name, 'avatar_key', cu.avatar_key
         )
-    ) end as claim
+    ) end as claim,
+    (select m.bucket_key from media m
+      where m.report_id = r.id and m.kind = 'before' and m.mime like 'image/%'
+      order by m.created_at limit 1) as cover_key,
+    (select count(*)::int from media m where m.report_id = r.id) as media_count
 """
 
 FROM = """
@@ -66,7 +70,7 @@ async def list_reports(
     public fact, and surfacing it is the product."""
     if status and status not in {"open", "claimed", "cleaned", "confirmed"}:
         raise ApiError(VALIDATION_FAILED, "Unknown status filter.")
-    return await db.fetch(
+    rows = await db.fetch(
         f"""select {FIELDS} {FROM}
             where ($1::text is null or r.status = $1)
               and ($2::uuid is null or r.reporter_id = $2)
@@ -76,11 +80,12 @@ async def list_reports(
         reporter_id,
         limit,
     )
+    return storage.sign_urls(rows)
 
 
 @router.get("/reports/{report_id}")
 async def get_report(report_id: UUID, _: dict = CurrentUser):
-    return await _load(report_id)
+    return storage.sign_urls(await _load(report_id))
 
 
 @router.post("/reports", status_code=201)
@@ -95,7 +100,7 @@ async def create_report(body: NewReport, user: dict = CurrentUser):
             f"select {FIELDS} {FROM} where r.client_id = $1", body.client_id
         )
         if existing:
-            return existing
+            return storage.sign_urls(existing)
 
     row = await db.fetchrow(
         """insert into reports
@@ -118,7 +123,7 @@ async def create_report(body: NewReport, user: dict = CurrentUser):
         body.payout,
         body.client_id,
     )
-    return await _load(row["id"])
+    return storage.sign_urls(await _load(row["id"]))
 
 
 @router.delete("/reports/{report_id}")
@@ -129,8 +134,10 @@ async def delete_report(report_id: UUID, user: dict = CurrentUser):
         raise ApiError(NOT_AUTHORISED, "You can only withdraw your own report.")
     if report["status"] != "open":
         raise ApiError(VALIDATION_FAILED, "Someone is already working on this spot.")
-    await db.execute("delete from media where report_id = $1", report_id)
+    keys = await db.fetch("delete from media where report_id = $1 returning bucket_key", report_id)
     await db.execute("delete from reports where id = $1", report_id)
+    for row in keys:
+        await storage.delete(storage.MEDIA_BUCKET, row["bucket_key"])
     return {"ok": True}
 
 
@@ -165,7 +172,7 @@ async def claim_report(report_id: UUID, user: dict = CurrentUser):
         )
         await con.execute("update reports set status = 'claimed' where id = $1", report_id)
 
-    return await _load(report_id)
+    return storage.sign_urls(await _load(report_id))
 
 
 @router.post("/reports/{report_id}/release")
@@ -186,7 +193,7 @@ async def release_claim(report_id: UUID, user: dict = CurrentUser):
         await con.execute(
             "update reports set status = 'open' where id = $1 and status = 'claimed'", report_id
         )
-    return await _load(report_id)
+    return storage.sign_urls(await _load(report_id))
 
 
 @router.post("/reports/{report_id}/cleaned")
@@ -214,7 +221,7 @@ async def mark_cleaned(report_id: UUID, user: dict = CurrentUser):
             "update claims set cleaned_at = now() where report_id = $1 and status = 'active'",
             report_id,
         )
-    return await _load(report_id)
+    return storage.sign_urls(await _load(report_id))
 
 
 @router.post("/reports/{report_id}/confirm")
@@ -238,7 +245,7 @@ async def confirm_report(report_id: UUID, body: Confirm, user: dict = CurrentUse
         result = await payout.confirm_and_pay(con, report_id, body.rating)
 
     return {
-        "report": await _load(report_id),
+        "report": storage.sign_urls(await _load(report_id)),
         "allocations": result["allocations"],
         "shortfall": result["shortfall"],
         "disputed": result["disputed"],
@@ -248,7 +255,7 @@ async def confirm_report(report_id: UUID, body: Confirm, user: dict = CurrentUse
 @router.get("/claims/mine")
 async def my_claims(user: dict = CurrentUser):
     """The cleaner's own work, current and finished."""
-    return await db.fetch(
+    rows = await db.fetch(
         f"""select {FIELDS}, mine.status as claim_status, mine.claimed_at as claimed_at
             {FROM}
             join claims mine on mine.report_id = r.id and mine.cleaner_id = $1
@@ -256,3 +263,4 @@ async def my_claims(user: dict = CurrentUser):
             order by mine.claimed_at desc""",
         user["id"],
     )
+    return storage.sign_urls(rows)

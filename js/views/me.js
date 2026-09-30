@@ -69,17 +69,78 @@ Havak.views = Havak.views || {};
     return el('div.notice.notice-act', null, [line, resend]);
   }
 
+  /* Tap the circle, or the words under it. The front camera is not forced:
+     most people pick a picture they already like rather than take one. */
+  function pictureRow(user, slot) {
+    var status = el('p.me-meta', { hidden: true, role: 'status' });
+
+    function redraw() {
+      slot.textContent = '';
+      slot.appendChild(ui.avatar(auth.current(), 'lg'));
+      remove.hidden = !auth.current().avatarKey;
+    }
+
+    function busy(text) {
+      status.textContent = text;
+      status.hidden = !text;
+      change.disabled = remove.disabled = !!text;
+    }
+
+    var file = el('input', {
+      type: 'file', accept: 'image/*', hidden: true,
+      onchange: function () {
+        var picked = file.files && file.files[0];
+        file.value = '';
+        if (!picked) return;
+        busy('Uploading…');
+        Havak.media.prepareAvatar(picked).then(auth.setPicture, function (err) {
+          return { ok: false, message: err.message };
+        }).then(function (res) {
+          busy('');
+          if (res.ok) { redraw(); ui.toast('Picture updated.'); }
+          else ui.toast(res.message);
+        });
+      }
+    });
+
+    var change = el('button.linkbtn', {
+      type: 'button',
+      text: user.avatarKey ? 'Change picture' : 'Add a picture',
+      onclick: function () { file.click(); }
+    });
+
+    var remove = el('button.linkbtn', {
+      type: 'button',
+      text: 'Remove',
+      hidden: !user.avatarKey,
+      onclick: function () {
+        busy('Removing…');
+        auth.clearPicture().then(function (res) {
+          busy('');
+          if (res.ok) { redraw(); change.textContent = 'Add a picture'; ui.toast('Picture removed.'); }
+          else ui.toast(res.message);
+        });
+      }
+    });
+
+    slot.addEventListener('click', function () { if (!change.disabled) file.click(); });
+
+    return el('div.me-pic', null, [file, change, remove, status]);
+  }
+
   Havak.views.me = function (screen) {
     var user = auth.current();
     return tally(user).then(function (t) {
 
     /* --- identity --- */
+    var slot = el('span.me-avatar', null, [ui.avatar(user, 'lg')]);
     var head = el('div.me-head', null, [
-      ui.avatar(user, 'lg'),
+      slot,
       el('div.me-id', null, [
         el('h1.me-name', { text: user.name }),
         el('p.me-meta', { text: user.place + ' · joined ' + ui.since(user.joinedAt) }),
-        el('p.me-meta', { text: user.email })
+        el('p.me-meta', { text: user.email }),
+        pictureRow(user, slot)
       ])
     ]);
 

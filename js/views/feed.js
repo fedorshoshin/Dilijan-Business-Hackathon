@@ -1,8 +1,7 @@
 /* Havak — the Map tab.
 
-   Phase 1 shows the reports as a read-only list, straight out of the store, so
-   the data layer is visible and the app has a spine. The map itself, the detail
-   screen and the report flow are Phase 2. */
+   Every report on the map and in a list under it, with the first photo of
+   each spot on its card. */
 
 window.Havak = window.Havak || {};
 Havak.views = Havak.views || {};
@@ -18,12 +17,14 @@ Havak.views = Havak.views || {};
 
   function card(report) {
     var bits = [ui.minutes(report.estMinutes), 'level ' + report.level, ui.amd(report.payout)];
+    if (report.mediaCount) bits.push(report.mediaCount + (report.mediaCount === 1 ? ' photo' : ' photos'));
 
     return el('li', null, [
       el('button.rcard.rcard-tap', {
         type: 'button',
         onclick: function () { Havak.router.go('/spot/' + report.id); }
       }, [
+        ui.thumb(report),
         el('div.rcard-top', null, [
           ui.statusTag(report.status),
           report.hazardous ? el('span.tag.tag-hazard', { text: 'Hazardous' }) : null
@@ -57,8 +58,7 @@ Havak.views = Havak.views || {};
         Havak.map.legend(),
         reports.length
           ? el('ul.rlist', null, reports.map(card))
-          : ui.empty('No spots reported yet', 'When someone reports one, it shows up here.'),
-        el('p.phase-note', { text: 'Photos arrive in Phase 3.' })
+          : ui.empty('No spots reported yet', 'When someone reports one, it shows up here.')
       ]));
     });
   };

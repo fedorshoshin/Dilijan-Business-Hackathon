@@ -1440,3 +1440,99 @@ body.app.no-tabs .toast { bottom: calc(var(--safe-b) + var(--s-5)); }
 .next-text { color: var(--green-dk); font-weight: 650; }
 
 form .panel:first-child { margin-top: var(--s-4); }
+
+/* ---------- photos and video (Phase 3) ----------
+   One strip, used by the report form (small) and the spot screen (large).
+   Each picture snaps into place under a thumb; the fixed 4:3 box means a
+   photo or a video's first frame loading in never shifts the page. */
+.spot-photos { margin-top: var(--s-5); }
+.shot-group + .shot-group { margin-top: var(--s-5); }
+.shot-head { font-size: var(--t-lg); margin-bottom: var(--s-2); }
+
+.shots {
+  display: flex;
+  gap: var(--s-2);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  margin: 0;
+  padding: 0;
+}
+.shots::-webkit-scrollbar { display: none; }
+
+.shot {
+  position: relative;
+  flex: 0 0 88%;
+  aspect-ratio: 4 / 3;
+  margin: 0;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--stone);
+  scroll-snap-align: start;
+  transition: opacity var(--dur) var(--ease);
+}
+.shots > .shot:only-child { flex-basis: 100%; }
+.shots-sm .shot { flex-basis: 40%; }
+.shots-sm .shot:only-child { flex-basis: 40%; }
+.shot img,
+.shot video { display: block; width: 100%; height: 100%; object-fit: cover; }
+.shot.is-busy { opacity: .5; pointer-events: none; }
+
+/* white on ink at 80%: stays above 4.5:1 even over a white photo */
+.shot-badge {
+  position: absolute;
+  left: var(--s-2);
+  bottom: var(--s-2);
+  padding: var(--s-1) var(--s-2);
+  border-radius: var(--r-sm);
+  background: rgba(27, 42, 33, .8);
+  color: var(--white);
+  font-size: var(--t-sm);
+}
+.shot-remove {
+  position: absolute;
+  top: var(--s-1);
+  right: var(--s-1);
+  width: var(--touch);
+  height: var(--touch);
+  border: 0;
+  border-radius: 50%;
+  background: rgba(27, 42, 33, .8);
+  color: var(--white);
+  font: inherit;
+  font-size: var(--t-md);
+  cursor: pointer;
+}
+.shot.is-missing { display: grid; place-items: center; }
+.shot-missing { font-size: var(--t-sm); color: var(--muted); }
+
+.shot-count {
+  margin-top: var(--s-2);
+  text-align: center;
+  font-size: var(--t-sm);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.shot-actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-3); }
+.shot-actions > .btn { flex: 1 1 140px; }
+
+/* the first photo on a report card */
+.rcard-thumb {
+  float: right;
+  width: 72px;
+  height: 72px;
+  margin: 0 0 var(--s-2) var(--s-3);
+  border-radius: var(--r-sm);
+  object-fit: cover;
+  background: var(--stone);
+}
+.rcard-tap::after { content: ''; display: block; clear: both; }
+
+/* avatar: the picture covers the initials, which stay underneath as the fallback */
+.avatar { position: relative; overflow: hidden; }
+.avatar-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.me-avatar { flex: none; cursor: pointer; border-radius: 50%; }
+.me-pic { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--s-2); margin-top: var(--s-1); margin-left: calc(-1 * var(--s-1)); }
+.me-pic .me-meta { flex-basis: 100%; margin: 0; padding-left: var(--s-1); }

@@ -15,7 +15,7 @@
    list changes — the strategy below serves the cache first, so an install that
    still held v2 would keep running the old offline-only app forever. Dropping
    the old cache on activate is what makes returning phones pick this up. */
-var CACHE = 'havak-shell-v4';
+var CACHE = 'havak-shell-v5';
 
 var SHELL = [
   'app.html',
@@ -28,6 +28,7 @@ var SHELL = [
   'js/remote.js',
   'js/money.js',
   'js/map.js',
+  'js/media.js',
   'js/auth.js',
   'js/ui.js',
   'js/router.js',

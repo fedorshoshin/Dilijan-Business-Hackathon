@@ -136,18 +136,17 @@ async def delete_media(media_id: UUID, user: dict = CurrentUser):
 
 @router.post("/me/avatar/upload-url", status_code=201)
 async def request_avatar_upload(body: AvatarRequest, user: dict = CurrentUser):
-    """One avatar per user, overwritten in place.
+    """Step one of changing your picture. Step two is PATCH /me with the key.
 
-    The path is fixed per user rather than unique per upload, so changing a
-    picture does not leave the old one behind. The bucket is public-read: an
-    avatar appears next to every name on every list, and signing dozens of URLs
-    per screen would cost real latency for no privacy gained (BACKEND.md §6).
+    A fresh key per upload rather than one fixed path overwritten in place: a
+    phone that cached the old picture under its key would otherwise go on
+    showing it, since the key never changed. PATCH /me removes the old blob, and
+    only accepts a key of this shape under your own id.
     """
-    key = f"{user['id']}/avatar.{_extension(body.mime)}"
+    key = f"{user['id']}/{uuid4()}.{_extension(body.mime)}"
     return {
         "bucket_key": key,
         "upload_url": await storage.signed_upload_url(storage.AVATAR_BUCKET, key),
-        "public_url": storage.public_url(storage.AVATAR_BUCKET, key),
     }
 
 
@@ -166,6 +165,4 @@ async def avatar_url(user_id: UUID, _: dict = CurrentUser):
     row = await db.fetchrow("select avatar_key from users where id = $1", user_id)
     if not row:
         raise ApiError(NOT_FOUND, "No such person.")
-    if not row["avatar_key"]:
-        return {"url": None}
-    return {"url": storage.public_url(storage.AVATAR_BUCKET, row["avatar_key"])}
+    return {"url": storage.signed_avatar_url(row["avatar_key"]) if row["avatar_key"] else None}

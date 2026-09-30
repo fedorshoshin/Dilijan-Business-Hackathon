@@ -108,12 +108,30 @@ Havak.ui = (function () {
     return (n >>> 0) % TONES;
   }
 
+  /* The uploaded picture sits on top of the initials rather than replacing
+     them: if the signed URL has expired or the phone is offline, the image
+     removes itself and the initials underneath are simply what you see. */
   function avatar(user, size) {
     var sizes = { sm: '.avatar-sm', lg: '.avatar-lg' };
-    return el('span.avatar.avatar-t' + tone(user.id || user.name) + (sizes[size] || ''), {
+    var node = el('span.avatar.avatar-t' + tone(user.id || user.name) + (sizes[size] || ''), {
       'aria-hidden': 'true',
       text: initials(user.name)
     });
+    if (user.avatarUrl) {
+      var img = el('img.avatar-img', { src: user.avatarUrl, alt: '', decoding: 'async' });
+      img.addEventListener('error', function () { img.remove(); });
+      node.appendChild(img);
+    }
+    return node;
+  }
+
+  /* The first "before" photo, small, on a report card. Removes itself if the
+     file never arrived, so a card is never decorated with a broken image. */
+  function thumb(report) {
+    if (!report.coverUrl) return null;
+    var img = el('img.rcard-thumb', { src: report.coverUrl, alt: '', loading: 'lazy', decoding: 'async' });
+    img.addEventListener('error', function () { img.remove(); });
+    return img;
   }
 
   /* Shown while an async view is resolving. Once the store talks to a server
@@ -169,6 +187,7 @@ Havak.ui = (function () {
     since: since,
     toast: toast,
     avatar: avatar,
+    thumb: thumb,
     loading: loading,
     errorState: errorState,
     empty: empty,
