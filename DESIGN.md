@@ -393,8 +393,6 @@ tap targets, no sideways scroll.
 - Two leftovers from Phase 3.5: a **report** written with no signal is not
   queued the way photos are (3.5.7), and the **two-phone test** has never been
   run — cross-user flows are proven between accounts in one browser (3.5.8).
-- `sql/` cannot rebuild the database from scratch: the migration that creates
-  the base tables was never checked in (3.5.1).
 
 ### Phase 0 — Foundations + app shell ✅ *(no visible feature; everything rests on it)*
 
@@ -471,7 +469,7 @@ no longer a record of anything.
 
 | # | Task | Status |
 | --- | --- | --- |
-| 3.5.1 | Supabase project, schema for the five tables, migrations checked into the repo | ⚠️ Project and schema live; `sql/` holds 002, 003 and `rls.sql` but **no 001**, so the base tables cannot be recreated from the repo alone |
+| 3.5.1 | Supabase project, schema for the five tables, migrations checked into the repo | ✅ `sql/001_base.sql` was reconstructed from the live database on 2026-10-01 and checked in. Applying 001 → `rls.sql` → 002 → 003 to an empty schema was verified to reproduce the live schema exactly — 72 columns, 26 constraints, 23 indexes and 2 views, all identical |
 | 3.5.2 | **RLS policies for every table** (5.3) | ✅ *by a different route* — `sql/rls.sql` is applied, but the real guarantee is that no browser can reach the database at all; every endpoint checks ownership itself |
 | 3.5.3 | `claim_report()` and `allocate_payout()` as `security definer` functions | ✅ *as server endpoints, not SQL functions* — claiming is one transaction with `select … for update`; two cleaners racing produce exactly one winner, checked in Phase 4 |
 | 3.5.4 | Swap `auth.js` to Supabase Auth; migrate the demo accounts | ✅ *as our own auth* — bcrypt, JWTs, confirmed email addresses and password reset by real SMTP |

@@ -1,7 +1,9 @@
 -- Havak — row level security for the pilot
 --
--- Run once in the Supabase SQL editor. Safe to re-run: every policy is dropped
--- before it is created.
+-- Run once in the Supabase SQL editor, after sql/001_base.sql and before
+-- sql/002_server.sql. Safe to re-run: every policy is dropped before it is
+-- created. As well as the policies, this file creates the two views the schema
+-- has (`users_public` and `pot`).
 --
 -- Why this file exists: the frontend is static, so the publishable key it ships
 -- is readable by anyone who opens the page source. That key is not a secret and

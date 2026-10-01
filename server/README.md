@@ -22,7 +22,10 @@ too — the client is written against it.
 ## Before first run
 
 1. **Run the migrations**, in order, in the Supabase SQL editor:
-   `../sql/rls.sql`, then `../sql/002_server.sql`.
+   `../sql/001_base.sql`, `../sql/rls.sql`, `../sql/002_server.sql`, then
+   `../sql/003_email.sql`. The order matters: 002 and 003 add columns to the
+   tables 001 creates, and `rls.sql` builds the two views. Every file is safe to
+   re-run, so applying the whole chain to an existing database changes nothing.
 2. **Create two storage buckets** (Storage → New bucket):
    - `report-media` — **not** public. Reads are signed.
    - `avatars` — **public**. An avatar renders beside every name on every list.
