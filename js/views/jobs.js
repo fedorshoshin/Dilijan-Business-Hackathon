@@ -132,24 +132,37 @@ Havak.views = Havak.views || {};
       return el('label.choice', null, [input, el('span', { text: label })]);
     }
 
+    /* The panel is built once and the list redraws under it, so a chip has to
+       restyle itself — marking the new choice is this row's own job, not the
+       redraw's. `after` lets a row do something slow first (asking for the
+       phone's location) and only commit if it worked. */
     function chipRow(label, key, options, after) {
       var row = el('div.chips', { role: 'group', 'aria-label': label });
+      var chips = [];
+
+      function mark() {
+        chips.forEach(function (c) {
+          var on = f[key] === c.value;
+          c.node.classList.toggle('is-on', on);
+          c.node.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+      }
+
       options.forEach(function (opt) {
-        var chip = el('button.chip' + (f[key] === opt.value ? '.is-on' : ''), {
+        var node = el('button.chip', {
           type: 'button',
           text: opt.label,
-          'aria-pressed': f[key] === opt.value ? 'true' : 'false',
           onclick: function () {
-            if (after) {
-              after(opt.value, function () { f[key] = opt.value; onChange(); });
-              return;
-            }
-            f[key] = opt.value;
-            onChange();
+            function commit() { f[key] = opt.value; mark(); onChange(); }
+            if (after) after(opt.value, commit);
+            else commit();
           }
         });
-        row.appendChild(chip);
+        chips.push({ node: node, value: opt.value });
+        row.appendChild(node);
       });
+
+      mark();
       return el('div.filter-row', null, [
         el('span.field-label', { text: label }),
         row
