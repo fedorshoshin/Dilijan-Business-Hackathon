@@ -35,7 +35,7 @@ Havak.remote = (function () {
   /* Same error type the whole app already switches on. Not a second shape. */
   var StoreError = api.ApiError;
 
-  var cache = { reports: [], users: [], claims: [], donations: [], alloc: [] };
+  var cache = { reports: [], users: [], claims: [], myjobs: [], donations: [], alloc: [] };
   var loaded = {};      /* kind -> Promise, so a collection is fetched once */
   var me = null;
 
@@ -97,15 +97,19 @@ Havak.remote = (function () {
         cache.reports = list.map(absorbReport);
         return cache.reports;
       });
-    } else if (kind === 'claims') {
-      /* the cleaner's own board; claims on other people's reports arrive
-         embedded in those reports and are absorbed above */
+    } else if (kind === 'claims' || kind === 'myjobs') {
+      /* One call answers two questions, so it backs both collections: 'myjobs'
+         is the cleaner's own work as whole reports, 'claims' the bare claim
+         records the profile tally counts. Claims on *other* people's reports
+         arrive embedded in those reports and are absorbed above. */
       job = api.claimsMine().then(function (list) {
-        list.forEach(function (c) {
-          if (c.cleaner) remember(c.cleaner);
-          upsert(cache.claims, c);
+        cache.myjobs = list.map(function (report) {
+          absorbReport(report);
+          upsert(cache.reports, report);
+          if (report.myClaim) upsert(cache.claims, report.myClaim);
+          return report;
         });
-        return cache.claims;
+        return kind === 'claims' ? cache.claims : cache.myjobs;
       });
     } else if (kind === 'donations') {
       job = api.donationsMine().then(function (list) {
@@ -265,7 +269,7 @@ Havak.remote = (function () {
   function reset() {
     return api.logOut().then(function () {
       me = null;
-      cache = { reports: [], users: [], claims: [], donations: [], alloc: [] };
+      cache = { reports: [], users: [], claims: [], myjobs: [], donations: [], alloc: [] };
       loaded = {};
       return true;
     });
@@ -279,6 +283,12 @@ Havak.remote = (function () {
     ready: ready,
     all: all,
     where: where,
+
+    /* Claiming, releasing and marking cleaned go through Havak.work, not
+       through add/update — each is its own endpoint with its own rule about who
+       may call it. They say here which caches they have made stale. */
+    invalidate: invalidate,
+
     find: find,
     add: add,
     update: update,

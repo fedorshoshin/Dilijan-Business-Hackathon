@@ -246,13 +246,19 @@ Havak.api = (function () {
     };
   }
 
+  /* Two callers, two shapes. GET /reports/{id}/allocations names the donation
+     the money came from; GET /me/earnings names the spot it was earned on. Both
+     are carried, and the one the caller did not ask for is simply null. */
   function allocFromWire(w) {
     return {
       id: w.id,
-      donationId: w.donation_id,
+      donationId: w.donation_id || null,
       reportId: w.report_id || null,
-      cleanerId: w.cleaner_id,
+      cleanerId: w.cleaner_id || null,
       amount: w.amount,
+      title: w.title || null,
+      locLabel: w.loc_label || null,
+      rating: w.rating == null ? null : w.rating,
       createdAt: ms(w.at)
     };
   }
@@ -459,16 +465,21 @@ Havak.api = (function () {
       return request('DELETE', '/me/avatar').then(function () { return true; });
     },
 
-    /* The two the client may never do for itself (BACKEND.md §4) */
+    /* The three state changes the client may never make for itself
+       (BACKEND.md §4). All three answer with the whole updated report, so the
+       screen that asked can repaint from the server's version of events rather
+       than guessing what the new state must be. */
     claim: function (reportId) {
       return request('POST', '/reports/' + encodeURIComponent(reportId) + '/claim')
-        .then(function (res) { return claimFromWire(res && res.claim ? res.claim : res, reportId); });
+        .then(reportFromWire);
     },
     release: function (reportId) {
-      return request('POST', '/reports/' + encodeURIComponent(reportId) + '/release');
+      return request('POST', '/reports/' + encodeURIComponent(reportId) + '/release')
+        .then(reportFromWire);
     },
     markCleaned: function (reportId) {
-      return request('POST', '/reports/' + encodeURIComponent(reportId) + '/cleaned');
+      return request('POST', '/reports/' + encodeURIComponent(reportId) + '/cleaned')
+        .then(reportFromWire);
     },
     confirm: function (reportId, rating) {
       return request('POST', '/reports/' + encodeURIComponent(reportId) + '/confirm', {
@@ -480,9 +491,16 @@ Havak.api = (function () {
         };
       });
     },
+    /* The cleaner's own work. Each row is a *report* with the caller's own claim
+       on it — which is not the same as `report.claim`: that one is the active
+       claim and is null once the job is done, while this one survives. */
     claimsMine: function () {
       return request('GET', '/claims/mine').then(function (list) {
-        return (list || []).map(function (w) { return claimFromWire(w, w.report_id); });
+        return (list || []).map(function (w) {
+          var report = reportFromWire(w);
+          report.myClaim = claimFromWire(w.my_claim, w.id);
+          return report;
+        });
       });
     },
 

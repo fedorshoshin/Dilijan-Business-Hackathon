@@ -1536,3 +1536,66 @@ form .panel:first-child { margin-top: var(--s-4); }
 .me-avatar { flex: none; cursor: pointer; border-radius: 50%; }
 .me-pic { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--s-2); margin-top: var(--s-1); margin-left: calc(-1 * var(--s-1)); }
 .me-pic .me-meta { flex-basis: 100%; margin: 0; padding-left: var(--s-1); }
+
+/* ---------- Phase 4: the jobs board and the cleaner's own work ---------- */
+
+/* Board / Your work. Links rather than buttons, so the browser's back gesture
+   works between them — hence the extra rules .seg does not need for a <button>. */
+.subtabs { margin: var(--s-4) 0; }
+.subtabs .seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  font-size: var(--t-md);
+  padding: 0 var(--s-3);
+}
+.subtabs .seg.is-on { color: var(--white); }
+
+.filters {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: var(--s-4);
+  display: grid;
+  gap: var(--s-4);
+  margin-bottom: var(--s-4);
+}
+.filter-row { display: grid; gap: var(--s-2); }
+
+/* What the job pays, which is the number a cleaner is scanning the board for. */
+.job-pay {
+  margin-top: var(--s-2);
+  font-size: var(--t-lg);
+  font-weight: 700;
+  color: var(--green-dk);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Claim / release / mark cleaned. Stacked at 390px, side by side when there is
+   room, and never narrower than a thumb. */
+.work-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin-top: var(--s-3);
+}
+.work-actions > .btn { flex: 1 1 180px; width: auto; }
+
+.earned {
+  background: var(--green-sf);
+  border: 1px solid var(--line-green);
+  border-radius: var(--r-md);
+  padding: var(--s-4);
+  text-align: center;
+}
+.earned-label { font-size: var(--t-sm); font-weight: 650; color: var(--green-dk); }
+.earned-sum {
+  font-size: var(--t-2xl);
+  line-height: 1.25;
+  font-weight: 700;
+  color: var(--green-dk);
+  font-variant-numeric: tabular-nums;
+  margin-top: var(--s-1);
+}
+.earned-note { font-size: var(--t-sm); color: var(--muted); margin-top: var(--s-1); }

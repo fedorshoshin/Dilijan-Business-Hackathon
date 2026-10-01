@@ -151,10 +151,19 @@ async def claim_report(report_id: UUID, user: dict = CurrentUser):
         # The lock is what makes this a race with exactly one winner: the second
         # transaction waits here, then reads status = 'claimed' and gives up.
         report = await con.fetchrow(
-            "select id, status, hazardous from reports where id = $1 for update", report_id
+            "select id, status, hazardous, reporter_id from reports where id = $1 for update",
+            report_id,
         )
         if not report:
             raise ApiError(NOT_FOUND, "That spot no longer exists.")
+        # Reporting a spot and then cleaning it yourself means confirming your
+        # own work and signing off your own payment from other people's
+        # donations. Two different people, or the money means nothing.
+        if report["reporter_id"] == user["id"]:
+            raise ApiError(
+                NOT_AUTHORISED,
+                "You reported this spot, so someone else has to clean it and you confirm the work.",
+            )
         if report["hazardous"]:
             raise ApiError(
                 NOT_AUTHORISED,
@@ -214,6 +223,20 @@ async def mark_cleaned(report_id: UUID, user: dict = CurrentUser):
         if row["status"] != "claimed":
             raise ApiError(VALIDATION_FAILED, "This spot is not currently being cleaned.")
 
+        # Task 4.5: the after-photo is the proof the reporter confirms from, so
+        # it is a rule here and not merely a disabled button on the phone.
+        proof = await con.fetchrow(
+            """select 1 from media
+                where report_id = $1 and kind = 'after' and mime like 'image/%'
+                limit 1""",
+            report_id,
+        )
+        if not proof:
+            raise ApiError(
+                VALIDATION_FAILED,
+                "Add a photo of the cleaned spot first — that is what the reporter checks.",
+            )
+
         await con.execute(
             "update reports set status = 'cleaned', cleaned_at = now() where id = $1", report_id
         )
@@ -255,8 +278,16 @@ async def confirm_report(report_id: UUID, body: Confirm, user: dict = CurrentUse
 @router.get("/claims/mine")
 async def my_claims(user: dict = CurrentUser):
     """The cleaner's own work, current and finished."""
+    # `claim` in FIELDS is the *active* claim, which is null once a job is
+    # finished — so a cleaner's own finished work needs its own object rather
+    # than a flat alias that would collide with r.cleaned_at.
     rows = await db.fetch(
-        f"""select {FIELDS}, mine.status as claim_status, mine.claimed_at as claimed_at
+        f"""select {FIELDS},
+                   jsonb_build_object(
+                       'id', mine.id, 'report_id', r.id, 'cleaner_id', mine.cleaner_id,
+                       'status', mine.status, 'claimed_at', mine.claimed_at,
+                       'cleaned_at', mine.cleaned_at
+                   ) as my_claim
             {FROM}
             join claims mine on mine.report_id = r.id and mine.cleaner_id = $1
             where mine.status in ('active', 'done')

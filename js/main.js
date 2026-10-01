@@ -175,7 +175,12 @@ Havak.shell = (function () {
           : Havak.views.myReports(screen);
       }
     });
-    r.define('/jobs',   { view: Havak.views.soon('jobs'),   auth: true, role: 'cleaner' });
+    r.define('/jobs',   {
+      auth: true,
+      role: 'cleaner',
+      /* one tab, two screens: the board, and my own work behind /jobs/mine */
+      view: function (screen, param) { return Havak.views.jobs(screen, param); }
+    });
     r.define('/give',   { view: Havak.views.soon('give'),   auth: true, role: 'donor' });
     r.define('/me',     { view: Havak.views.me,     auth: true });
 

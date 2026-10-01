@@ -13,16 +13,6 @@ Havak.views = Havak.views || {};
   var el = Havak.ui.el;
 
   var PLANNED = {
-    jobs: {
-      title: 'Jobs board',
-      phase: 'Phase 4',
-      lines: [
-        'Every reported spot nobody has claimed yet.',
-        'Filter by area, by how long it takes, and hide hazardous waste.',
-        'Claim one and it disappears from everyone else\'s board.',
-        'Mark it cleaned with an after-photo, and get paid.'
-      ]
-    },
     give: {
       title: 'Fund the work',
       phase: 'Phase 6',

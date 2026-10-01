@@ -212,10 +212,13 @@ Havak.views = Havak.views || {};
         el('p.next-text', { text: next })
       ]),
 
-      el('p.phase-note', {
-        text: 'Claiming lands in Phase 4, confirming in Phase 5, funding this ' +
-              'spot in Phase 6.'
-      })
+      /* The state changed under everyone, not just here — so repaint from the
+         server rather than patching this screen's copy of the report. */
+      Havak.work.actions(report, me, function () { Havak.router.render(); }),
+
+      report.status === 'cleaned' && mine
+        ? el('p.phase-note', { text: 'Confirming and rating the work lands in Phase 5.' })
+        : null
     ]);
 
     screen.appendChild(body);
