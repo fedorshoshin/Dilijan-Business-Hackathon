@@ -355,13 +355,48 @@ Shown to the cleaner *before* they claim, so the offer is honest.
 Ordered so each phase is demoable on its own and nothing is built before the
 thing it depends on. `Done when:` is the check to run before ticking it.
 
-**Progress: Phases 0, 1, 1.5 and 2 are built and verified** (2026-09-21); **Phase 3.5** went live as our own FastAPI server (2026-09-29) and **Phase 3** on Cloudflare R2 (2026-09-30) and **Phase 4**, the jobs board (2026-10-01). 82 automated checks
-drive a real Chromium at 390×844 and cover every "done when" below for those
-phases — guard, session, role toggles, offline launch, corrupt-storage fallback,
-report validation, map placement, hazard path, payout arithmetic, cross-role
-detail views, tap targets, no sideways scroll.
+### Where the build has got to
 
-### Phase 0 — Foundations + app shell *(no visible feature; everything rests on it)*
+In the order they were actually built, which is why 3.5 comes before 3 — the
+backend had to be real before photos had anywhere to go.
+
+| Phase | What it gives you | Status |
+| --- | --- | --- |
+| 0 — Foundations + shell | Installable app, tabs, offline launch | ✅ 2026-09-21 |
+| 1 — Accounts | Sign up, sign in, roles | ✅ 2026-09-21 |
+| 1.5 — Async seam | Screens written for a real backend | ✅ 2026-09-21 |
+| 2 — Report a spot | The form, the map pin, my reports | ✅ 2026-09-21 |
+| 3.5 — Backend cutover | Our own FastAPI server + Postgres; real passwords, real email | ✅ 2026-09-29 *(2 leftovers)* |
+| 3 — Camera and media | Photos and video on Cloudflare R2, profile pictures | ✅ 2026-09-30 |
+| 4 — Cleaner: board and work | Jobs board, filters, claim, release, mark cleaned, earnings | ✅ 2026-10-01 |
+| **5 — Closing the loop** | **Reporter confirms and rates; the cleaner is actually paid** | ⬜ **next** |
+| 6 — Donor | Giving, and the honest "what did my money buy" dashboard | ⬜ not started |
+| 7 — Ship quality | Real-device pass, landing page, accessibility | ⬜ not started |
+| 8 — Store build | Capacitor wrap, app stores | ⏸ parked |
+
+**88 automated checks** drive a real Chromium at 390×844 against the published
+site — 51 for Phases 0 to 3.5, 37 for Phase 4. They cover every "done when"
+below for those phases: guard, session, role toggles, offline launch,
+corrupt-storage fallback, report validation, map placement, hazard path, payout
+arithmetic, real uploads to R2, claiming across two cleaners, after-photo proof,
+tap targets, no sideways scroll.
+
+**Known gaps, carried forward rather than forgotten:**
+
+- The **Give** tab is still a placeholder (Phase 6), and "Earned so far" on a
+  cleaner's screen will read 0 AMD until Phase 5 moves the money.
+- **Nothing has been run on a real phone yet** (task 7.2). Specifically waiting:
+  the camera opening, iOS video playback, and a 50 MB video surviving a relaunch.
+- The **database is in Mumbai and the server in Chicago**, so every screen is
+  seconds slower than it should be. Measurements and the fix are in
+  `server/deploy/README.md`; this is a deployment decision, not a code one.
+- Two leftovers from Phase 3.5: a **report** written with no signal is not
+  queued the way photos are (3.5.7), and the **two-phone test** has never been
+  run — cross-user flows are proven between accounts in one browser (3.5.8).
+- `sql/` cannot rebuild the database from scratch: the migration that creates
+  the base tables was never checked in (3.5.1).
+
+### Phase 0 — Foundations + app shell ✅ *(no visible feature; everything rests on it)*
 
 | # | Task | Done when |
 | --- | --- | --- |
@@ -375,7 +410,7 @@ detail views, tap targets, no sideways scroll.
 | 0.8 ✅ | Complete the token set and enforce it; shared sheet/toast/field/empty-state CSS | No hex outside `:root`; spacing and type on scale (component sizes and border widths are exempt); one class list used by every later screen |
 | 0.9 ✅ | Screen transitions — eased 200 ms slide, respects `prefers-reduced-motion` | Feels like an app, not a page load |
 
-### Phase 1 — All users: accounts
+### Phase 1 — All users: accounts ✅
 
 | # | Task | Done when |
 | --- | --- | --- |
@@ -386,7 +421,7 @@ detail views, tap targets, no sideways scroll.
 | 1.5 ✅ | One-tap demo logins (donor / reporter / cleaner) | A judge reaches any role in one tap |
 | 1.6 ✅ | Honest note: "demo accounts, passwords are not secure" | Visible once on sign-up, not nagging. **Removed at Phase 3.5**, when it stops being true |
 
-### Phase 1.5 — Make the seam async *(small, and expensive to skip)*
+### Phase 1.5 — Make the seam async ✅ *(small, and expensive to skip)*
 
 `store.js` keeps its localStorage guts but starts returning Promises, so every
 screen from Phase 2 on is written against the shape the backend will need. Doing
@@ -398,7 +433,7 @@ this after Phase 6 would mean rewriting every view.
 | 1.5.2 ✅ | Loading and error states in the shared component set | Every screen can show "loading" and "that failed" without inventing its own |
 | 1.5.3 ✅ | Re-run the Phase 0–1 check suite | All 26 checks still pass |
 
-### Phase 2 — Reporter: the report itself
+### Phase 2 — Reporter: the report itself ✅
 
 | # | Task | Done when |
 | --- | --- | --- |
@@ -408,7 +443,7 @@ this after Phase 6 would mean rewriting every view.
 | 2.4 ✅ | Reporter dashboard: my reports + live status of each | Statuses match the lifecycle in 4.3 |
 | 2.5 ✅ | Report detail screen, shared by all three roles | Same route works signed in as any role |
 
-### Phase 3 — Camera and media *(built 2026-09-30 on Cloudflare R2)*
+### Phase 3 — Camera and media ✅ *(built 2026-09-30 on Cloudflare R2)*
 
 Verified in Chromium at 390 px against the published site and the live R2
 bucket: 13 + 3 automated checks, including real uploads, reads and deletes.
@@ -423,23 +458,29 @@ Still to do on real phones (task 7.2): the camera opening, and iOS video.
 | 3.5 ✅ | Before/after strips on the spot screen, scroll-snap, "1 / 2" counter; first photo on report cards | Swipes, counter updates, no sideways scroll at 390 px ✔ |
 | 3.6 ✅ | **Profile picture** — square-crop to 256 px, signed URL, initials underneath as the fallback | 256×256 from R2 on the Me screen ✔; removal deletes the file ✔ |
 
-### Phase 3.5 — Backend cutover *(the pilot phase; blocked on decision #6)*
+### Phase 3.5 — Backend cutover ✅ *(built 2026-09-29, differently from this plan)*
 
-Everything after this is built against the real shared backend, so the hardest
-flows are proven across two phones rather than simulated on one.
+Everything after this is built against the real shared backend. **Decision #6
+went the other way:** rather than talk to Supabase from the browser, we wrote our
+own FastAPI server and the browser talks only to that. Supabase is now just the
+Postgres database behind it. That removed the whole publishable-key problem of
+§5.3 — there is no key in the page source to abuse — at the cost of a server to
+run. The tasks below are kept in their original wording with what actually
+happened beside them, because a plan quietly rewritten to match the outcome is
+no longer a record of anything.
 
-| # | Task | Done when |
+| # | Task | Status |
 | --- | --- | --- |
-| 3.5.1 | Supabase project, schema for the five tables, migrations checked into the repo | Schema recreatable from the repo alone |
-| 3.5.2 | **RLS policies for every table** (5.3) | A signed-in user provably cannot read or write another user's rows |
-| 3.5.3 | `claim_report()` and `allocate_payout()` as `security definer` functions | Two cleaners racing for one report: exactly one wins |
-| 3.5.4 | Swap `auth.js` to Supabase Auth; migrate the demo accounts | Passwords hashed server-side; existing flows unchanged |
-| 3.5.5 | Swap `store.js` internals to `api.js` | No view file changes |
-| 3.5.6 | Media moves to a storage bucket; rows keep the keys | Photo taken on phone A is visible on phone B |
-| 3.5.7 | `sync.js` — offline write queue and replay (5.4) | Report written offline appears for others on reconnect |
-| 3.5.8 | Two-device test | Report on A appears on B; B claims it; it leaves A's board |
+| 3.5.1 | Supabase project, schema for the five tables, migrations checked into the repo | ⚠️ Project and schema live; `sql/` holds 002, 003 and `rls.sql` but **no 001**, so the base tables cannot be recreated from the repo alone |
+| 3.5.2 | **RLS policies for every table** (5.3) | ✅ *by a different route* — `sql/rls.sql` is applied, but the real guarantee is that no browser can reach the database at all; every endpoint checks ownership itself |
+| 3.5.3 | `claim_report()` and `allocate_payout()` as `security definer` functions | ✅ *as server endpoints, not SQL functions* — claiming is one transaction with `select … for update`; two cleaners racing produce exactly one winner, checked in Phase 4 |
+| 3.5.4 | Swap `auth.js` to Supabase Auth; migrate the demo accounts | ✅ *as our own auth* — bcrypt, JWTs, confirmed email addresses and password reset by real SMTP |
+| 3.5.5 | Swap `store.js` internals to `api.js` | ✅ `js/remote.js` presents the identical interface; not one view changed |
+| 3.5.6 | Media moves to a storage bucket; rows keep the keys | ✅ Cloudflare R2, in Phase 3 |
+| 3.5.7 | `sync.js` — offline write queue and replay (5.4) | ⬜ **Only half done.** Photos have an IndexedDB outbox and retry on their own (3.1). A *report* written with no signal is not queued — it fails and has to be sent again by hand |
+| 3.5.8 | Two-device test | ⬜ **Not run.** The cross-user flows are proven between separate accounts in one browser, which is not the same as two phones. Belongs with the real-device pass (7.2) |
 
-### Phase 4 — Cleaner: board and work *(built 2026-10-01)*
+### Phase 4 — Cleaner: board and work ✅ *(built 2026-10-01)*
 
 Verified in Chromium at 390 px against the published site and the live API: 31
 automated checks across four accounts — a reporter, two cleaners, and one person
@@ -467,7 +508,7 @@ this, not just the board. The client no longer waits on a refetch it does not
 need, but the real fix is moving the database next to the server, ideally both
 to Europe, which is also nearer Dilijan. See `server/deploy/README.md`.
 
-### Phase 5 — Closing the loop
+### Phase 5 — Closing the loop ⬜ *(next up)*
 
 | # | Task | Done when |
 | --- | --- | --- |
@@ -476,7 +517,7 @@ to Europe, which is also nearer Dilijan. See `server/deploy/README.md`.
 | 5.3 | Confirmation triggers payout allocation (7.2) | `alloc` rows written; cleaner's earnings rise |
 | 5.4 | Dispute path: rating 1–2 → flagged, not auto-paid | Report goes to `cleaned` + `disputed`, visible to both |
 
-### Phase 6 — Donor
+### Phase 6 — Donor ⬜ *(not started)*
 
 | # | Task | Done when |
 | --- | --- | --- |
@@ -486,7 +527,7 @@ to Europe, which is also nearer Dilijan. See `server/deploy/README.md`.
 | 6.4 | **Donor dashboard: what was my money spent on?** | Each donation traces to named cleanups with photos and dates |
 | 6.5 | Unspent balance shown honestly ("2 000 AMD not yet allocated") | Donated total = allocated + unallocated, always |
 
-### Phase 7 — Ship quality
+### Phase 7 — Ship quality ⬜ *(not started)*
 
 | # | Task | Done when |
 | --- | --- | --- |
@@ -519,18 +560,28 @@ another person's board:
 
 1. **Reporter** signs up → photographs a hazardous spot → sets level 4 and a
    90-minute estimate → watches it get claimed → confirms it clean → rates 4/5.
+   → *works up to the confirming; **confirm and rate** is Phase 5.*
 2. **Cleaner** signs in → filters the board to non-hazardous jobs under 2 hours
    near the centre → claims one → marks it cleaned with an after-photo → sees
    the payment land in their dashboard.
+   → *works up to the after-photo; **the payment landing** is Phase 5.*
 3. **Donor** signs in → gives to the general pot and to one specific cleanup →
    opens their dashboard → sees exactly which cleanups their money paid for.
+   → *not started; Phase 6. The server endpoints and the ledger already exist.*
 
 And two checks that only a pilot needs:
 
 4. **Two phones, one town.** A report made on phone A is on phone B's board
    within a refresh. When B claims it, it leaves A's board.
+   → *proven between two accounts in one browser; **never run on two phones**
+   (3.5.8, 7.2).*
 5. **No signal.** A report written in a forest with no bars is saved, marked
    pending, and appears for everyone else once signal returns.
+   → *true for **photos** (3.1). A report itself is not queued yet (3.5.7).*
+
+None of the five is blocked on anything unknown: 1 and 2 need Phase 5, 3 needs
+Phase 6, 4 needs two phones in a room, and 5 needs the report write to use the
+outbox the photos already use.
 
 ---
 
@@ -550,6 +601,13 @@ depends on them. Decide after Phase 7 whether points return as the retention
 layer.
 
 ## 12. Decisions
+
+### Settled since
+
+6. **Which backend** — *settled 2026-09-29.* Our own FastAPI server on the VPS,
+   with Supabase as the Postgres behind it. The browser never talks to the
+   database. **Still to decide: which region** — the server is in Chicago and the
+   database in Mumbai, which costs every screen seconds (`server/deploy/README.md`).
 
 ### Settled (2026-09-21)
 
@@ -571,10 +629,6 @@ layer.
 4. **Who pays cleaners: money or points?** The task list says money, so money it
    is; confirm that is the real intent for Dilijan and not a hackathon artifact.
 5. **Certificate** — keep, drop, or rebuild on the new account model (section 11).
-6. **Which backend, and its connection details** — you are building the server
-   (5.6). I need the base URL, the public key, and whether it is Supabase or
-   your own service before writing `api.js`. Everything else is agreed in
-   `BACKEND.md`. *Blocks Phase 3.5.*
 7. **Who is liable for the pilot's data?** Real names, photos and locations of
    real people, on a real server. Someone has to own deletion requests and a
    privacy note. Not a coding task, but it blocks going live with real users.
