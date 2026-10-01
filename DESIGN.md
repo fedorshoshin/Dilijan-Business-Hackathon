@@ -355,7 +355,7 @@ Shown to the cleaner *before* they claim, so the offer is honest.
 Ordered so each phase is demoable on its own and nothing is built before the
 thing it depends on. `Done when:` is the check to run before ticking it.
 
-**Progress: Phases 0, 1, 1.5 and 2 are built and verified** (2026-09-21); **Phase 3.5** went live as our own FastAPI server (2026-09-29) and **Phase 3** on Cloudflare R2 (2026-09-30). 51 automated checks
+**Progress: Phases 0, 1, 1.5 and 2 are built and verified** (2026-09-21); **Phase 3.5** went live as our own FastAPI server (2026-09-29) and **Phase 3** on Cloudflare R2 (2026-09-30) and **Phase 4**, the jobs board (2026-10-01). 82 automated checks
 drive a real Chromium at 390×844 and cover every "done when" below for those
 phases — guard, session, role toggles, offline launch, corrupt-storage fallback,
 report validation, map placement, hazard path, payout arithmetic, cross-role
@@ -439,16 +439,33 @@ flows are proven across two phones rather than simulated on one.
 | 3.5.7 | `sync.js` — offline write queue and replay (5.4) | Report written offline appears for others on reconnect |
 | 3.5.8 | Two-device test | Report on A appears on B; B claims it; it leaves A's board |
 
-### Phase 4 — Cleaner: board and work
+### Phase 4 — Cleaner: board and work *(built 2026-10-01)*
+
+Verified in Chromium at 390 px against the published site and the live API: 31
+automated checks across four accounts — a reporter, two cleaners, and one person
+who is both — so "it leaves everyone else's board" is checked by a second
+cleaner actually looking, not inferred from a status column.
 
 | # | Task | Done when |
 | --- | --- | --- |
-| 4.1 | Board of available reports (cards + map) | Only `open` reports appear by default |
-| 4.2 | Filters: location, estimated time, **hide hazardous**, **unclaimed only** | Each filter provably changes the list; choices survive navigation |
-| 4.3 | Claim a report → it leaves everyone else's board | Second cleaner no longer sees it |
-| 4.4 | Release a claim | Returns to `open` for everyone |
-| 4.5 | Mark cleaned, with after-photo proof | Moves to `cleaned`, awaits confirmation |
-| 4.6 | Cleaner dashboard: to-do / cleaned / **earned money** | Earnings equal the sum of their `alloc` rows |
+| 4.1 ✅ | Board of available reports (cards + map) | Open spots listed with what each pays; hazardous hidden by default ✔ |
+| 4.2 ✅ | Filters: near me, estimated time, **hide hazardous**, **unclaimed only** | Each filter provably changes the list ✔; choices survive navigating away and back ✔ |
+| 4.3 ✅ | Claim a report → it leaves everyone else's board | Gone from a second cleaner's board ✔; their claim refused with `already_claimed` ✔ |
+| 4.4 ✅ | Release a claim | Back to `open`, and back on another cleaner's board ✔ |
+| 4.5 ✅ | Mark cleaned, with after-photo proof | Refused with a plain message until an after photo exists ✔, then moves to `cleaned` ✔ |
+| 4.6 ✅ | Cleaner dashboard: to-do / cleaned / **earned money** | "Your work" lists each job; earnings are the sum of the `alloc` rows, not jobs × quoted payout ✔ |
+
+Two holes were closed while building, both server-side so they are real rules
+and not just disabled buttons: a report could have been marked cleaned with no
+proof at all, and a reporter could have claimed their own spot — which would
+have meant confirming your own work and signing off your own payment.
+
+**Found here, not fixed here:** the API server is in Chicago and the Supabase
+database in `ap-south-1` (Mumbai). One round trip is ~250 ms and a query ~525 ms,
+so a claim — seven queries — takes several seconds. Every screen in the app pays
+this, not just the board. The client no longer waits on a refetch it does not
+need, but the real fix is moving the database next to the server, ideally both
+to Europe, which is also nearer Dilijan. See `server/deploy/README.md`.
 
 ### Phase 5 — Closing the loop
 

@@ -133,9 +133,14 @@ hold in the database.
 1. A report may be claimed **only when `status = 'open'`**. Two cleaners tapping
    "claim" at the same second must produce exactly one winner. The partial
    unique index above does this; the loser must get a clear error, not a crash.
-2. Only the **claiming cleaner** may move a report `claimed → cleaned`.
+2. Only the **claiming cleaner** may move a report `claimed → cleaned`, and only
+   once at least one **after photo** exists for it. The photo is the evidence
+   the reporter confirms from, so without it there is nothing to confirm.
 3. Only the **reporting user** may move a report `cleaned → confirmed`, and only
    they may set `rating`.
+3a. A report's **reporter may not claim it**. Otherwise one person reports a
+   spot, cleans it, confirms their own work and is paid from other people's
+   donations with nobody else having looked.
 4. `alloc` rows are **never written by the client**. Only the payout function
    (§4) writes them.
 5. `donations` are insert-only. No client may edit or delete one after the fact.
@@ -150,10 +155,20 @@ hold in the database.
 Everything else is plain row reads and writes. These two are not.
 
 ```
-claim_report(report_id) -> { ok, claim } | { ok:false, reason:'already_claimed' }
+POST /reports/{id}/claim -> the updated report | 409 already_claimed
 ```
-Atomic. Checks the report is `open`, creates the claim, sets the report to
-`claimed`, all in one transaction.
+Atomic. Checks the report is `open`, not hazardous, and not the caller's own,
+creates the claim and sets the report to `claimed`, all in one transaction.
+
+It answers with the **whole updated report**, not a bare claim — as do
+`/release` and `/cleaned`. That is what lets a screen repaint without a second
+round trip, which matters more than it should while the database is a continent
+away from the server (`server/deploy/README.md`).
+
+`GET /claims/mine` likewise returns *reports*, each carrying the caller's own
+claim as `my_claim`. That is not the same as the report's `claim` field, which
+is the **active** claim and goes null once a job is finished — a cleaner's
+completed work would otherwise vanish from their own list.
 
 ```
 confirm_and_pay(report_id, rating) -> { ok, allocations[] }

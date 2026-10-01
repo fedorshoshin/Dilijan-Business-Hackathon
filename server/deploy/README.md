@@ -139,6 +139,60 @@ curl -sS -D- -o /dev/null -X OPTIONS \
   https://b11871fb3b06d70d513e65922be5a9cb.r2.cloudflarestorage.com/havak/x
 ```
 
+## The database is on the wrong continent
+
+Measured from the VPS on 2026-10-01, and this is the single biggest thing
+between the pilot and a usable app:
+
+| | |
+| --- | --- |
+| API server | Chicago, United States |
+| Database | Supabase pooler, `aws-0-ap-south-1` (Mumbai) |
+| TCP round trip | ~250 ms |
+| One `select 1` | ~525 ms |
+| Opening a connection | ~1.7 s |
+
+Every query pays a trip to India and back, and a query costs *two* round trips
+because `statement_cache_size=0` (the Supabase transaction pooler cannot keep
+prepared statements). So an endpoint is as slow as its query count: claiming a
+spot is seven queries — auth, `begin`, `select … for update`, the insert, the
+update, `commit`, and the reload — and takes several seconds.
+
+To reproduce:
+
+```bash
+server/.venv/bin/python - <<'EOF'
+import asyncio, os, time, asyncpg
+for l in open("server/.env"):
+    if "=" in l and not l.startswith("#"):
+        k, v = l.strip().split("=", 1); os.environ.setdefault(k, v)
+async def main():
+    con = await asyncpg.connect(os.environ["DATABASE_URL"], statement_cache_size=0)
+    for _ in range(5):
+        t = time.monotonic(); await con.fetchval("select 1")
+        print("%.0f ms" % ((time.monotonic() - t) * 1000))
+    await con.close()
+asyncio.run(main())
+EOF
+```
+
+What would actually fix it, best first:
+
+1. **Put both in the same region, and make it Europe.** Frankfurt is ~60 ms from
+   Yerevan and would serve Dilijan users far better than Chicago does. Supabase
+   cannot move a project between regions, so this means a new project and a
+   dump/restore of the six tables, plus a new `DATABASE_URL`.
+2. **Same region, wherever that is.** Even leaving the server in Chicago, a
+   `us-east` database turns 525 ms into about 30 ms.
+3. **Connect directly (port 5432) rather than through the pooler (6543)** and
+   drop `statement_cache_size=0`. That halves the round trips per query. Cheap,
+   but it only halves a number that should be twenty times smaller, and direct
+   connections are limited in number.
+
+Nothing in the app can paper over this. What the client *does* do is avoid
+trips it does not need: claiming a spot repaints from the reply the server
+already sent instead of re-reading the whole board (`js/work.js`).
+
 ## Known weak spots, honestly
 
 - **`nip.io` is a shared convenience whose availability is not ours.** Fine for
