@@ -79,13 +79,20 @@ Havak.views = Havak.views || {};
     return metres < 950 ? metres + ' m away' : (metres / 1000).toFixed(1) + ' km away';
   }
 
-  /* ---------- one job on the board ---------- */
+  /* ---------- one job on the board ----------
+     Card and claim button read as one object: the card tops it, a foot carries
+     the money and the action. A full-width button between every card turned the
+     list into stripes you had to read past. */
   function jobCard(report, me, repaint) {
     var far = away(distance(report));
     var bits = [ui.minutes(report.estMinutes), 'level ' + report.level];
     if (far) bits.unshift(far);
 
-    var open = el('button.rcard.rcard-tap', {
+    /* The board is scanned, so claiming is one tap from here as well as from
+       the spot itself. Same rule, same code — see Havak.work.offers. */
+    var offer = work.offers(report, me)[0];
+
+    var open = el('button.rcard.rcard-tap' + (offer ? '.rcard-joined' : ''), {
       type: 'button',
       onclick: function () { Havak.router.go('/spot/' + report.id); }
     }, [
@@ -97,18 +104,25 @@ Havak.views = Havak.views || {};
       el('h3.rcard-title', { text: report.title }),
       el('p.rcard-where', { text: report.loc.label }),
       el('p.rcard-meta', { text: bits.join(' · ') }),
-      el('p.job-pay', { text: ui.amd(report.payout) })
+      offer ? null : el('p.job-pay', { text: ui.amd(report.payout) })
     ]);
 
-    /* The board is scanned, so claiming is one tap from here as well as from
-       the spot itself. Same rule, same code — see Havak.work.offers. */
-    var actions = work.actions(report, me, function () { repaint(); });
+    if (!offer) return el('li', null, [open]);
 
-    return el('li', null, actions ? [open, actions] : [open]);
+    return el('li', null, [
+      open,
+      el('div.job-foot', null, [
+        el('span.job-pay', { text: ui.amd(report.payout) }),
+        work.button(offer, report, function () { repaint(); }, 'btn-sm')
+      ])
+    ]);
   }
 
-  /* ---------- the filter panel ---------- */
-  function filterPanel(f, onChange) {
+  /* ---------- the filter panel ----------
+     Folded shut to begin with. A cleaner opens this tab to see jobs, and an
+     open panel pushed every one of them below the fold. `note` is filled in by
+     draw() so the shut panel still says what it is keeping back. */
+  function filterPanel(f, note, onChange) {
     function toggle(label, key) {
       var input = el('input', {
         type: 'checkbox',
@@ -161,21 +175,27 @@ Havak.views = Havak.views || {};
       });
     }
 
-    return el('section.filters', { 'aria-label': 'Filters' }, [
-      chipRow('How long', 'maxMinutes', [
-        { value: 0, label: 'Any' },
-        { value: 30, label: 'Up to 30 min' },
-        { value: 60, label: 'Up to 1h' },
-        { value: 120, label: 'Up to 2h' }
+    return el('details.filters', null, [
+      el('summary.filters-head', null, [
+        el('span.filters-title', { text: 'Filters' }),
+        note
       ]),
-      chipRow('Near me', 'within', [
-        { value: 0, label: 'Anywhere' },
-        { value: 1000, label: 'Within 1 km' },
-        { value: 3000, label: 'Within 3 km' }
-      ], needLocation),
-      el('div.filter-row', null, [
-        toggle('Hide hazardous waste', 'hideHazard'),
-        toggle('Only spots nobody has taken', 'unclaimedOnly')
+      el('div.filters-body', null, [
+        chipRow('How long', 'maxMinutes', [
+          { value: 0, label: 'Any' },
+          { value: 30, label: 'Up to 30 min' },
+          { value: 60, label: 'Up to 1h' },
+          { value: 120, label: 'Up to 2h' }
+        ]),
+        chipRow('Near me', 'within', [
+          { value: 0, label: 'Anywhere' },
+          { value: 1000, label: 'Within 1 km' },
+          { value: 3000, label: 'Within 3 km' }
+        ], needLocation),
+        el('div.filter-row', null, [
+          toggle('Hide hazardous waste', 'hideHazard'),
+          toggle('Only spots nobody has taken', 'unclaimedOnly')
+        ])
       ])
     ]);
   }
@@ -186,6 +206,7 @@ Havak.views = Havak.views || {};
     var f = loadFilters();
     var latest = [];            /* the last list from the server */
     var listBox = el('div');
+    var note = el('span.filters-note');
 
     /* Filters are applied to the list we already have — no round trip, so the
        board reacts the instant a chip is tapped. */
@@ -206,12 +227,17 @@ Havak.views = Havak.views || {};
       }).length;
       var hidden = takeable - shown.length;
 
+      note.textContent = hidden
+        ? hidden + (hidden === 1 ? ' spot hidden' : ' spots hidden')
+        : 'showing everything';
+
       listBox.textContent = '';
+      /* The hidden count lives on the filter panel, not here — saying it twice
+         on one screen just makes both harder to read. */
       listBox.appendChild(el('p.sub', {
         text: shown.length
           ? shown.length + (shown.length === 1 ? ' job' : ' jobs') +
-            ' · ' + ui.amd(pot) + ' on offer' +
-            (hidden ? ' · ' + hidden + ' hidden by filters' : '')
+            ' · ' + ui.amd(pot) + ' on offer'
           : (hidden ? 'Nothing matches these filters.' : 'No open spots right now.')
       }));
 
@@ -260,7 +286,7 @@ Havak.views = Havak.views || {};
         el('p.sub', { text: 'Pick a spot, clean it, get paid from the pot.' })
       ]),
       tabs('board'),
-      filterPanel(f, function () { saveFilters(f); draw(); }),
+      filterPanel(f, note, function () { saveFilters(f); draw(); }),
       listBox
     ]));
 

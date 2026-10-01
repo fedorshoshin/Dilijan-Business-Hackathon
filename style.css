@@ -1552,25 +1552,71 @@ form .panel:first-child { margin-top: var(--s-4); }
 }
 .subtabs .seg.is-on { color: var(--white); }
 
+/* Folded shut by default, so the jobs themselves start above the fold. */
 .filters {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--r-md);
-  padding: var(--s-4);
+  margin-bottom: var(--s-4);
+}
+.filters-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  min-height: var(--touch);
+  padding: var(--s-2) var(--s-4);
+  cursor: pointer;
+  list-style: none;
+}
+.filters-head::-webkit-details-marker { display: none; }
+.filters-title { font-weight: 650; }
+.filters-title::before {
+  content: '';
+  display: inline-block;
+  width: 7px; height: 7px;
+  margin-right: var(--s-2);
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform var(--dur) var(--ease);
+}
+.filters[open] .filters-title::before { transform: translateY(1px) rotate(225deg); }
+.filters-note { font-size: var(--t-sm); color: var(--muted); }
+.filters-body {
   display: grid;
   gap: var(--s-4);
-  margin-bottom: var(--s-4);
+  padding: 0 var(--s-4) var(--s-4);
+  border-top: 1px solid var(--line);
+  padding-top: var(--s-4);
 }
 .filter-row { display: grid; gap: var(--s-2); }
 
 /* What the job pays, which is the number a cleaner is scanning the board for. */
 .job-pay {
-  margin-top: var(--s-2);
   font-size: var(--t-lg);
   font-weight: 700;
   color: var(--green-dk);
   font-variant-numeric: tabular-nums;
 }
+.rcard .job-pay { margin-top: var(--s-2); }
+
+/* Card and its action are one object: the card loses its bottom corners and the
+   foot carries the price and the button. */
+.rcard-joined { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: none; }
+.job-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 var(--r-md) var(--r-md);
+}
+.job-foot > .btn { flex: 0 0 auto; }
 
 /* Claim / release / mark cleaned. Stacked at 390px, side by side when there is
    room, and never narrower than a thumb. */

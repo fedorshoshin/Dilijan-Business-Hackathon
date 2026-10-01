@@ -84,8 +84,12 @@ Havak.work = (function () {
 
   var ACTIONS = { claim: claim, cleaned: markCleaned, release: release };
 
-  function button(offer, report, onDone) {
-    var node = el('button.btn.btn-block' + (offer.primary ? '.btn-primary' : '.btn-ghost'), {
+  /* `size` is 'btn-sm' on the board, where the button sits in a card's foot
+     beside the price, and omitted on a spot's own screen, where taking the job
+     on is the whole point of the page. */
+  function button(offer, report, onDone, size) {
+    var node = el('button.btn' + (offer.primary ? '.btn-primary' : '.btn-ghost') +
+                  (size ? '.' + size : '.btn-block'), {
       type: 'button',
       text: offer.label,
       onclick: function () {
@@ -126,6 +130,7 @@ Havak.work = (function () {
     release: release,
     markCleaned: markCleaned,
     offers: offers,
-    actions: actions
+    actions: actions,
+    button: button
   };
 })();
