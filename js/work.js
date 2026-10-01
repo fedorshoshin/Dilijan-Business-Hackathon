@@ -21,13 +21,15 @@ Havak.work = (function () {
   var store = Havak.store;
   var auth = Havak.auth;
 
-  /* Every one of these changes a report's status, which changes the board, the
-     cleaner's own list and the profile tally. Drop all three rather than try to
-     patch them in place: a wrong cached status here costs somebody a wasted
-     walk across town. */
+  /* All three endpoints answer with the whole updated report, so the one thing
+     that changed is already known — take it, and the screen can repaint without
+     waiting on the network. The cleaner's own lists are a different matter: they
+     gain and lose whole rows, so they are dropped and re-read when something
+     next asks for them. */
   function run(call, reportId) {
     return call(reportId).then(function (report) {
-      store.invalidate('reports', 'claims', 'myjobs');
+      store.adoptReport(report);
+      store.invalidate('claims', 'myjobs');
       return { ok: true, report: report };
     }, function (err) {
       return { ok: false, code: err.code, message: err.message || 'That did not work.' };

@@ -148,6 +148,18 @@ Havak.remote = (function () {
     for (var i = 0; i < arguments.length; i++) delete loaded[arguments[i]];
   }
 
+  /* A write has handed us the server's own new version of a report. Put it
+     straight into the cache instead of dropping the list and fetching it again:
+     re-reading the list costs a round trip to a database on another continent
+     (Chicago to Mumbai, ~0.5s per query), and we already know the answer. The
+     rest of the list is no more stale than it was a moment ago. */
+  function adoptReport(report) {
+    if (!report || !report.id) return report;
+    absorbReport(report);
+    upsert(cache.reports, report);
+    return report;
+  }
+
   /* ---------- the store interface ---------- */
 
   /* Called once at boot, before the first render. Resolves even when signed
@@ -288,6 +300,11 @@ Havak.remote = (function () {
        through add/update — each is its own endpoint with its own rule about who
        may call it. They say here which caches they have made stale. */
     invalidate: invalidate,
+    adoptReport: adoptReport,
+
+    /* True when this collection is already in memory, so a screen can tell
+       "painted from the cache, worth re-checking" from "just fetched". */
+    isLoaded: function (kind) { return !!loaded[kind]; },
 
     find: find,
     add: add,

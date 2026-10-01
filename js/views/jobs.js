@@ -234,13 +234,24 @@ Havak.views = Havak.views || {};
       }
     }
 
-    /* After a claim: the board has genuinely changed for everybody, so re-read
-       it rather than hide the card we just acted on. */
+    /* Draw from whatever the store already holds — instant after a claim, since
+       the claim's own reply has been put in the cache. */
     function refresh() {
       return store.all('reports').then(function (fresh) {
         latest = fresh;
         draw();
       });
+    }
+
+    /* And separately, ask the server again, because somebody else may have taken
+       a spot since this list was fetched. Deliberately not awaited by the
+       buttons: a tap must not sit there for a second and a half waiting on a
+       database in Mumbai. If the answer changes anything, the board redraws when
+       it arrives — and claiming a spot that has gone is safe either way, because
+       the server settles that race and says so. */
+    function recheck() {
+      store.invalidate('reports');
+      return refresh();
     }
 
     screen.appendChild(el('div.wrap.pad', null, [
@@ -253,7 +264,11 @@ Havak.views = Havak.views || {};
       listBox
     ]));
 
-    return refresh();
+    /* Painted from the cache, so it may be a few minutes old — check behind it.
+       On a first visit there is nothing cached and refresh() has just been to
+       the server, so a second trip would be pure waste. */
+    var cached = store.isLoaded('reports');
+    return refresh().then(function () { if (cached) recheck(); });
   }
 
   /* ---------- my work ---------- */
