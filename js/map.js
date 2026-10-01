@@ -1,11 +1,24 @@
-/* Havak — the Dilijan map.
+/* Havak — the map.
 
-   Drawn artwork, not a tile map: no tiles to download, so it works offline in
-   a forest, which is exactly where it gets used. Positions are percentages
-   across the artwork, derived from real coordinates by geo.js.
+   A real tile map (Leaflet + OpenStreetMap), vendored in `vendor/leaflet` so it
+   is served from our own origin and the service worker can cache it. Up to
+   2026-10-01 this was drawn SVG artwork; the artwork needed no network, which
+   suited a forest, but it could not be zoomed, showed no real paths or street
+   names, and a pin on it told a cleaner roughly nothing about how to get there.
+   A spot you cannot find is a spot nobody cleans, so the trade is worth it.
 
-   One component, used three ways: read-only with pins (the Map tab), tappable
-   to place a spot (the report form), and single-pin (a report's detail). */
+   What the trade costs, stated plainly: tiles come over the network. The app
+   shell still works offline, and so do the pins, the list and the coordinates —
+   but the ground underneath them is blank until tiles have been fetched once.
+   sw.js keeps a capped cache of the tiles you have already seen, so the area you
+   actually work in survives losing signal.
+
+   One component, used four ways: read-only with pins (Map tab, the board),
+   single-pin (a report's page), and tappable to place a spot (the report form).
+
+   Positions are real lat/lng throughout. `loc.x`/`loc.y` — percentages across
+   the old artwork — are still computed on write because the server column is NOT
+   NULL, but nothing draws from them any more. */
 
 window.Havak = window.Havak || {};
 
@@ -13,115 +26,246 @@ Havak.map = (function () {
   'use strict';
 
   var el = Havak.ui.el;
+  var geo = Havak.geo;
 
-  /* the artwork — static, so innerHTML is safe here and nowhere else */
-  var ART =
-    '<svg viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Map of the Dilijan valley">' +
-      '<rect x="0" y="0" width="1000" height="700" fill="#EFEDE6"/>' +
-      '<path fill="#D6E3D0" d="M0,0 H1000 V150 C900,192 820,120 700,162 C560,208 470,130 350,176 C230,218 120,150 0,192 Z"/>' +
-      '<path fill="#D6E3D0" d="M0,700 H1000 V556 C880,516 800,600 690,564 C570,524 480,612 360,570 C240,528 120,602 0,564 Z"/>' +
-      '<path fill="#C7D9C0" opacity=".7" d="M0,0 H1000 V78 C880,112 760,60 640,92 C520,124 420,70 300,100 C190,128 100,86 0,108 Z"/>' +
-      '<ellipse cx="866" cy="96" rx="52" ry="30" fill="#9CC4DE"/>' +
-      '<ellipse cx="866" cy="96" rx="52" ry="30" fill="none" stroke="#7FB0CE" stroke-width="3"/>' +
-      '<path d="M-10,432 C120,402 200,472 320,442 C450,410 520,482 650,452 C770,424 860,482 1010,456" fill="none" stroke="#8FBBD9" stroke-width="14" stroke-linecap="round"/>' +
-      '<path d="M-10,432 C120,402 200,472 320,442 C450,410 520,482 650,452 C770,424 860,482 1010,456" fill="none" stroke="#A8CCE4" stroke-width="6" stroke-linecap="round"/>' +
-      '<path d="M-10,300 C140,332 210,264 340,296 C470,326 540,254 670,286 C800,316 880,248 1010,280" fill="none" stroke="#D9D2C3" stroke-width="16" stroke-linecap="round"/>' +
-      '<path d="M-10,300 C140,332 210,264 340,296 C470,326 540,254 670,286 C800,316 880,248 1010,280" fill="none" stroke="#F3EFE6" stroke-width="3" stroke-dasharray="14 12"/>' +
-      '<g fill="#E4DED1" stroke="#D2CABA" stroke-width="2">' +
-        '<rect x="196" y="332" width="70" height="46" rx="6"/><rect x="278" y="344" width="54" height="40" rx="6"/>' +
-        '<rect x="344" y="330" width="62" height="44" rx="6"/><rect x="214" y="390" width="58" height="36" rx="6"/>' +
-        '<rect x="286" y="396" width="76" height="34" rx="6"/><rect x="430" y="336" width="66" height="42" rx="6"/>' +
-        '<rect x="510" y="352" width="48" height="38" rx="6"/><rect x="392" y="392" width="52" height="32" rx="6"/>' +
-        '<rect x="606" y="330" width="58" height="40" rx="6"/><rect x="676" y="346" width="46" height="34" rx="6"/>' +
-      '</g>' +
-      '<g class="map-label" fill="#3E5545"><text x="40" y="52">Dilijan National Park</text>' +
-      '<text x="806" y="152">Parz Lake</text><text x="40" y="662">National Park · south slope</text></g>' +
-      '<g class="map-label map-label-sm" fill="#4C6B84"><text x="150" y="424">Aghstev river</text></g>' +
-      '<g class="map-label map-label-sm" fill="#6B6355"><text x="214" y="316">Old Dilijan</text>' +
-      '<text x="828" y="266">M4 → Ijevan</text></g>' +
-    '</svg>';
+  var TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+  /* Attribution is not decoration: using OSM's tiles obliges us to show it. */
+  var ATTRIB = '&copy; <a href="https://www.openstreetmap.org/copyright" ' +
+               'target="_blank" rel="noopener">OpenStreetMap</a>';
 
   var STATUS_CLASS = {
     open: 'open', claimed: 'crew', cleaned: 'check', confirmed: 'done'
   };
 
+  var B = geo.BOUNDS;
+
+  /* Leaflet keeps window-level listeners per map, so a map whose screen has been
+     replaced by the router has to be told to let go. Views build their DOM and
+     hand it back, and nothing tells us when it is discarded — so each new render
+     sweeps for maps whose container has left the document. */
+  var live = [];
+  function sweep() {
+    live = live.filter(function (entry) {
+      if (entry.node.isConnected) return true;
+      /* Order matters: stop the observer before tearing the map down. A resize
+         callback arriving after remove() reaches into a container Leaflet has
+         already let go of, which throws on `_leaflet_pos`. */
+      if (entry.ro) entry.ro.disconnect();
+      entry.map.remove();
+      return false;
+    });
+  }
+
+  /* Leaflet measures its container on init, so it cannot be set up until the
+     node is in the document and has a width. Views append after we return, so
+     wait for that rather than forcing every caller to change shape. */
+  function whenSized(node, fn) {
+    var tries = 0;
+    (function look() {
+      if (node.isConnected && node.clientWidth > 0) { fn(); return; }
+      if (++tries > 120) return;          /* ~2s: the node was never shown */
+      requestAnimationFrame(look);
+    })();
+  }
+
+  function pinIcon(report) {
+    var cls = STATUS_CLASS[report.status] || 'open';
+    return L.divIcon({
+      className: 'pin is-' + cls + (report.hazardous ? ' is-hazard' : ''),
+      html: '<i></i>',
+      iconSize: [44, 44],               /* the tap target, not the dot */
+      iconAnchor: [22, 22]
+    });
+  }
+
+  function label(report) {
+    var status = (Havak.ui.STATUS[report.status] || {}).label || report.status;
+    return report.title + ' — ' + status;
+  }
+
   /* opts: { reports, pin, selectable, onPick, onPinClick, hint } */
   function render(opts) {
     opts = opts || {};
+    sweep();
 
-    var art = el('div.map');
-    art.innerHTML = ART;
+    var canvas = el('div.map');
+    var shell = el('div.map-shell', null, [canvas]);
+    var note = el('p.map-hint-line', { hidden: true });
+    shell.appendChild(note);
+    if (opts.hint) { note.hidden = false; note.textContent = opts.hint; }
 
-    var pins = el('div.pins');
-    art.appendChild(pins);
+    /* The report form's "use my location" button drives the marker from outside.
+       It is a no-op until Leaflet has initialised, which is why the caller is
+       told whether it took — pressing it in the first moments of the screen must
+       not look like it silently did nothing. */
+    shell.place = function (lat, lng) {
+      if (!canvas.havakPlace) return false;
+      canvas.havakPlace(lat, lng);
+      return true;
+    };
 
-    (opts.reports || []).forEach(function (report) {
-      var cls = STATUS_CLASS[report.status] || 'open';
-      var pin = el('button.pin.is-' + cls + (report.hazardous ? ' is-hazard' : ''), {
-        type: 'button',
-        style: 'left:' + report.loc.x + '%;top:' + report.loc.y + '%',
-        'aria-label': report.title + ' — ' + (Havak.ui.STATUS[report.status] || {}).label,
-        onclick: function (ev) {
-          ev.stopPropagation();
-          if (opts.onPinClick) opts.onPinClick(report.id);
-        }
-      }, [el('i', { 'aria-hidden': 'true' })]);
-      pins.appendChild(pin);
+    /* Leaflet missing is not a crash: the file is vendored and cached, but a
+       half-installed service worker could still serve one file and not another.
+       The screens around this map carry the address and the coordinates, so
+       saying so is better than taking the page down. */
+    if (typeof L === 'undefined') {
+      canvas.appendChild(el('p.map-fallback', {
+        text: 'The map could not load. The written location and coordinates below still apply.'
+      }));
+      return shell;
+    }
+
+    var reports = (opts.reports || []).filter(function (r) {
+      return r && r.loc && typeof r.loc.lat === 'number' && typeof r.loc.lng === 'number';
     });
 
-    /* the spot being placed right now */
-    var placed = null;
-    function showPlaced(x, y) {
-      if (!placed) {
-        placed = el('span.pin.is-new.is-placing', { 'aria-hidden': 'true' }, [el('i')]);
-        pins.appendChild(placed);
-      }
-      placed.style.left = x + '%';
-      placed.style.top = y + '%';
-    }
-    if (opts.pin) showPlaced(opts.pin.x, opts.pin.y);
-
-    if (opts.selectable) {
-      art.classList.add('is-selectable');
-
-      var pick = function (clientX, clientY) {
-        var box = art.getBoundingClientRect();
-        var x = ((clientX - box.left) / box.width) * 100;
-        var y = ((clientY - box.top) / box.height) * 100;
-        x = Math.max(0, Math.min(100, x));
-        y = Math.max(0, Math.min(100, y));
-        showPlaced(x, y);
-        if (opts.onPick) opts.onPick(x, y);
-      };
-
-      art.addEventListener('click', function (ev) { pick(ev.clientX, ev.clientY); });
-
-      /* keyboard: the map is focusable and arrow keys nudge the marker, so
-         placing a spot does not require a pointing device */
-      art.tabIndex = 0;
-      art.setAttribute('role', 'application');
-      art.setAttribute('aria-label', 'Map of Dilijan. Tap to place your marker, or use the arrow keys.');
-      art.addEventListener('keydown', function (ev) {
-        var step = ev.shiftKey ? 5 : 1;
-        var cur = opts.pin || { x: 50, y: 50 };
-        var moved = true;
-        if (ev.key === 'ArrowLeft') cur.x -= step;
-        else if (ev.key === 'ArrowRight') cur.x += step;
-        else if (ev.key === 'ArrowUp') cur.y -= step;
-        else if (ev.key === 'ArrowDown') cur.y += step;
-        else moved = false;
-        if (!moved) return;
-        ev.preventDefault();
-        cur.x = Math.max(0, Math.min(100, cur.x));
-        cur.y = Math.max(0, Math.min(100, cur.y));
-        showPlaced(cur.x, cur.y);
-        if (opts.onPick) opts.onPick(cur.x, cur.y);
+    whenSized(canvas, function () {
+      var map = L.map(canvas, {
+        /* The page scrolls; the wheel belongs to the page, not the map. Touch
+           dragging stays on, because a map you cannot pan with a thumb is not a
+           map. */
+        scrollWheelZoom: false,
+        zoomControl: true,
+        attributionControl: true
       });
+
+      /* Leaflet 1.9's default prefix carries a Ukraine flag emoji. The credit
+         stays — the flag does not: this is a council-facing app about litter in
+         Armenia, and it is not the place to carry anybody's flag by accident. */
+      map.attributionControl.setPrefix(
+        '<a href="https://leafletjs.com" target="_blank" rel="noopener">Leaflet</a>');
+
+      L.tileLayer(TILE_URL, {
+        attribution: ATTRIB,
+        maxZoom: 19,
+        minZoom: 9,
+        /* No detectRetina: it doubles every tile request, and these are somebody
+           else's servers being used for free. No crossOrigin either — we never
+           read tile pixels back, and asking for CORS would make the whole map
+           depend on a header we do not control. The service worker caches the
+           opaque responses perfectly well. */
+      }).addTo(map).on('tileerror', function () {
+        if (opts.hint) return;            /* a real instruction outranks this */
+        note.hidden = false;
+        note.textContent = 'Map images need a connection. The pins and coordinates are correct regardless.';
+      });
+
+      /* Where to look first: the spots if there are any, otherwise Dilijan. */
+      if (reports.length === 1) {
+        map.setView([reports[0].loc.lat, reports[0].loc.lng], 16);
+      } else if (reports.length > 1) {
+        map.fitBounds(L.latLngBounds(reports.map(function (r) {
+          return [r.loc.lat, r.loc.lng];
+        })).pad(0.2));
+      } else if (opts.pin) {
+        map.setView([opts.pin.lat, opts.pin.lng], 16);
+      } else {
+        map.fitBounds([[B.LAT_S, B.LNG_W], [B.LAT_N, B.LNG_E]]);
+      }
+
+      reports.forEach(function (report) {
+        var marker = L.marker([report.loc.lat, report.loc.lng], {
+          icon: pinIcon(report),
+          title: label(report),
+          riseOnHover: true
+        }).addTo(map);
+
+        var node = marker.getElement();
+        if (node) {
+          node.setAttribute('aria-label', label(report));
+          if (opts.onPinClick) node.setAttribute('role', 'button');
+        }
+        if (opts.onPinClick) {
+          marker.on('click keypress', function (ev) {
+            if (ev.originalEvent && ev.originalEvent.type === 'keypress' &&
+                ev.originalEvent.key !== 'Enter' && ev.originalEvent.key !== ' ') return;
+            opts.onPinClick(report.id);
+          });
+        }
+      });
+
+      if (opts.selectable) placing(map, canvas, note, opts);
+
+      /* The map can be built while its panel is still settling, or the phone can
+         be turned sideways. Either way Leaflet needs telling — but only while the
+         map is still on screen. A detached container has no position to measure,
+         and asking for one throws. */
+      var ro = null;
+      if (window.ResizeObserver) {
+        ro = new ResizeObserver(function () {
+          if (!canvas.isConnected) return;
+          map.invalidateSize();
+        });
+        ro.observe(canvas);
+      }
+
+      live.push({ map: map, node: canvas, ro: ro });
+    });
+
+    return shell;
+  }
+
+  /* ---------- placing a spot ----------
+     The marker is draggable, so a rough tap can be corrected without starting
+     again. Keyboard users pan with the arrow keys (Leaflet's own handling) and
+     press Enter to drop the marker in the middle — which needs no pointer and no
+     dragging. */
+  function placing(map, canvas, note, opts) {
+    canvas.classList.add('is-selectable');
+    canvas.setAttribute('aria-label',
+      'Map of Dilijan. Tap to place your marker, or move the map with the arrow keys and press Enter to place it in the centre.');
+
+    var marker = null;
+
+    function say(lat, lng) {
+      note.hidden = false;
+      note.textContent = 'Marker placed · ' + geo.format(lat, lng);
     }
 
-    var shell = el('div.map-shell', null, [art]);
-    if (opts.hint) shell.appendChild(el('p.map-hint-line', { text: opts.hint }));
-    return shell;
+    function put(lat, lng, quiet) {
+      if (!marker) {
+        marker = L.marker([lat, lng], {
+          icon: L.divIcon({
+            className: 'pin is-new is-placing', html: '<i></i>',
+            iconSize: [44, 44], iconAnchor: [22, 22]
+          }),
+          draggable: true,
+          keyboard: false     /* Enter on the map places; Enter on the pin must not re-fire */
+        }).addTo(map);
+        marker.on('dragend', function () {
+          var p = marker.getLatLng();
+          say(p.lat, p.lng);
+          if (opts.onPick) opts.onPick(p.lat, p.lng);
+        });
+        var node = marker.getElement();
+        if (node) node.setAttribute('aria-label', 'The spot you are reporting. Drag to adjust.');
+      } else {
+        marker.setLatLng([lat, lng]);
+      }
+      if (!quiet) say(lat, lng);
+      if (opts.onPick && !quiet) opts.onPick(lat, lng);
+    }
+
+    if (opts.pin) put(opts.pin.lat, opts.pin.lng, true);
+
+    map.on('click', function (ev) { put(ev.latlng.lat, ev.latlng.lng); });
+
+    canvas.addEventListener('keydown', function (ev) {
+      if (ev.key !== 'Enter') return;
+      /* Leaflet's own controls are buttons inside this container; Enter on one
+         of those is theirs, not ours. */
+      if (ev.target !== canvas) return;
+      ev.preventDefault();
+      var c = map.getCenter();
+      put(c.lat, c.lng);
+    });
+
+    /* Expose the one thing the form needs to drive from outside: the GPS button
+       moves both the view and the marker. */
+    canvas.havakPlace = function (lat, lng) {
+      map.setView([lat, lng], 17);
+      put(lat, lng);
+    };
   }
 
   function legend() {

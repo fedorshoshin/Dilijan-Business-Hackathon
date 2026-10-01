@@ -101,8 +101,9 @@ js/sync.js             offline write queue + replay on reconnect (5.4)
 js/media.js            blob put/get — IndexedDB, then the storage bucket
 js/auth.js             signup / login / logout / session / route guard
 js/router.js           hash router  (#/feed #/report #/board #/give #/me)
-js/geo.js              real coordinates <-> positions on the drawn map
-js/map.js              the Dilijan map: pins, tap-to-place
+js/geo.js              real coordinates, the pilot area, distance between points
+js/map.js              the Dilijan map: Leaflet + OSM tiles, pins, tap-to-place
+vendor/leaflet/        Leaflet 1.9.4, vendored so it is same-origin and cacheable
 js/money.js            the payout formula, and later the allocation ledger (7.2)
 js/views/*.js          one file per screen
 ```
@@ -150,8 +151,10 @@ users:    [{ id, name, email, pass, roles:[], place, joinedAt, avatarKey }]
 session:  { userId } | null
 
 reports:  [{ id, reporterId, title, desc,
-             loc:{ lat, lng, x, y, label },   // real position; x/y derived for the
-                                       //   drawn map; label for a human
+             loc:{ lat, lng, x, y, label },   // real position; label for a human.
+                                       //   x/y is a leftover of the drawn map:
+                                       //   still written (the column is NOT
+                                       //   NULL), read by nothing since 2026-10-01
              level: 1..5,              // how bad it is
              hazardous: bool,          // chemicals, sharps, asbestos…
              estMinutes: int,          // reporter's estimate
@@ -393,6 +396,13 @@ tap targets, no sideways scroll.
 - Two leftovers from Phase 3.5: a **report** written with no signal is not
   queued the way photos are (3.5.7), and the **two-phone test** has never been
   run — cross-user flows are proven between accounts in one browser (3.5.8).
+- **"Offline" is weaker than this document has been claiming.** Two separate
+  limits, both measured on 2026-10-01: map tiles for an area you have never
+  opened cannot be drawn without signal (the tiles you *have* seen are cached and
+  do still draw); and, more importantly, a **cold start with no network lands on
+  the login screen** — `auth.init()` cannot confirm a session without the server,
+  so it falls back to signed-out. That second one predates the map and arrived
+  with the backend cutover. The shell itself caches and loads correctly.
 
 ### Phase 0 — Foundations + app shell ✅ *(no visible feature; everything rests on it)*
 
@@ -601,6 +611,17 @@ layer.
 ## 12. Decisions
 
 ### Settled since
+
+8. **The map is real tiles** — *settled 2026-10-01.* Leaflet over OpenStreetMap,
+   replacing the drawn SVG artwork. The artwork needed no network, which suited a
+   forest, but it could not be zoomed and showed no streets, paths or building
+   outlines — so a pin on it told a cleaner roughly nothing about how to actually
+   reach the spot. Leaflet is vendored rather than loaded from a CDN, so it is
+   same-origin and the service worker can cache it; tiles get their own capped
+   cache, so ground you have already looked at survives losing signal. The cost
+   is stated plainly in the known gaps: ground you have *never* looked at is blank
+   until there is signal. If this outgrows a pilot, the tile URL in `js/map.js` is
+   the single line to point at a paid provider.
 
 6. **Which backend** — *settled 2026-09-29.* Our own FastAPI server on the VPS,
    with Supabase as the Postgres behind it. The browser never talks to the

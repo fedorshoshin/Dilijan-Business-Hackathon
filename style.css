@@ -290,42 +290,56 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
 .sub { color: var(--muted); font-size: 14px; margin-top: 4px; }
 
 /* ---------- map ---------- */
-.map-shell { border-radius: var(--r-md); overflow: hidden; border: 1px solid var(--line); }
+/* Real tiles since 2026-10-01 (js/map.js). Leaflet paints its panes at z-index
+   400-700 and its controls at 800-1000, which would put a zoom button on top of
+   the tab bar. `isolation` scopes all of that inside the shell, so the app chrome
+   keeps winning without anybody having to out-number Leaflet. */
+.map-shell {
+  border-radius: var(--r-md);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  isolation: isolate;
+}
 .map {
   position: relative;
   aspect-ratio: 10 / 7;
   background: var(--stone);
-  touch-action: manipulation;
 }
-.map svg { display: block; width: 100%; height: 100%; }
-.map-label { font-size: 20px; font-weight: 600; font-family: inherit; }
-.map-label-sm { font-size: 16px; font-weight: 500; }
-
-.map.placing { cursor: crosshair; }
-.map.placing::after {
-  content: "";
-  position: absolute; inset: 0;
-  border: 3px dashed var(--green);
-  border-radius: var(--r-md);
-  pointer-events: none;
-  animation: pulse 1.6s var(--ease) infinite;
-}
-@keyframes pulse { 0%,100% { opacity: .45; } 50% { opacity: .9; } }
-
-.map-hint {
-  position: absolute;
-  left: 50%; bottom: 12px;
-  transform: translateX(-50%);
-  background: var(--ink);
-  color: var(--white);
-  font-size: 14px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  white-space: nowrap;
-  pointer-events: none;
+.map-fallback {
+  padding: var(--s-4);
+  color: var(--muted);
+  font-size: var(--t-md);
+  line-height: 1.5;
 }
 
-.pins { position: absolute; inset: 0; }
+/* Leaflet brings its own font stack, sizes and link colours. Inherit ours. */
+.map.leaflet-container { font: inherit; background: var(--stone); }
+.map .leaflet-container a { color: var(--green); }
+
+/* Leaflet's zoom buttons are 30px square; the floor in this project is 44px. */
+.map .leaflet-bar { border: 1px solid var(--line); box-shadow: 0 1px 4px rgba(27,42,33,.18); }
+.map .leaflet-bar a {
+  width: 44px; height: 44px; line-height: 44px;
+  font-size: var(--t-lg);
+  color: var(--ink);
+  border-bottom: 1px solid var(--line);
+}
+.map .leaflet-bar a:last-child { border-bottom: 0; }
+.map .leaflet-bar a:hover { background: var(--surface-2); color: var(--ink); }
+.map .leaflet-bar a:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
+
+/* Attribution is an obligation of using OSM's tiles, so it stays visible. Fine
+   print rather than body copy, but still well clear of the contrast floor. */
+.map .leaflet-control-attribution {
+  background: rgba(255,255,255,.88);
+  color: var(--muted);
+  font-size: 12px;
+  padding: 2px var(--s-1);
+}
+
+.map.is-selectable { cursor: crosshair; }
+.map.is-selectable:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
+
 .pin {
   position: absolute;
   width: 44px; height: 44px;      /* tap target */
@@ -336,11 +350,16 @@ a.btn { display: inline-flex; align-items: center; justify-content: center; text
   cursor: pointer;
   display: grid;
   place-items: center;
-  animation: drop .32s var(--ease) both;
+  /* Fade only, never transform. Leaflet positions every marker with an inline
+     `transform: translate3d(...)`, and a CSS animation outranks an inline style
+     — so a keyframe that touched transform parked all nine pins on top of each
+     other in the corner. Animating opacity leaves the positioning alone, and the
+     hover scale on `i` below keeps working because nothing here fills it. */
+  animation: pin-in .32s var(--ease) both;
 }
-@keyframes drop {
-  from { transform: translateY(-10px); opacity: 0; }
-  to   { transform: translateY(0);     opacity: 1; }
+@keyframes pin-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 .pin i {
   display: block;
@@ -1299,8 +1318,9 @@ body.app.no-tabs .toast { bottom: calc(var(--safe-b) + var(--s-5)); }
 
 /* ---------- map ---------- */
 .map-shell { margin-top: var(--s-3); }
-.map.is-selectable { cursor: crosshair; }
-.map.is-selectable:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+/* .map.is-selectable lives with the rest of the map rules further up; the copy
+   that used to be here set outline-offset outward, where the shell's overflow
+   clipped it. */
 .map-hint-line {
   font-size: var(--t-sm);
   color: var(--muted);

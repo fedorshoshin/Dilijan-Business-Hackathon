@@ -17,6 +17,7 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
 
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body class="app">
@@ -39,6 +40,9 @@
 <script src="js/ui.js"></script>
 <script src="js/money.js"></script>
 <script src="js/router.js"></script>
+<!-- Leaflet is vendored, not loaded from a CDN: same origin means the service
+     worker can cache it, and the map keeps working with no third party up. -->
+<script src="vendor/leaflet/leaflet.js"></script>
 <script src="js/map.js"></script>
 <script src="js/media.js"></script>
 <script src="js/work.js"></script>

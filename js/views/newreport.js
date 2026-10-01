@@ -45,14 +45,17 @@ Havak.views = Havak.views || {};
     /* ---------- where ---------- */
     var whereNote = el('p.field-hint', { text: 'Tap the map, or use your location.' });
 
+    /* The map reports real coordinates now. x/y is still derived and sent
+       because the server column is NOT NULL, but nothing draws from it. */
+    function placed(lat, lng) {
+      var at = geo.toXY(lat, lng);
+      draft.loc = { x: at.x, y: at.y, lat: lat, lng: lng };
+      clearError();
+    }
+
     var mapBox = Havak.map.render({
       selectable: true,
-      onPick: function (x, y) {
-        var real = geo.toLatLng(x, y);
-        draft.loc = { x: x, y: y, lat: real.lat, lng: real.lng };
-        whereNote.textContent = 'Marker placed · ' + geo.format(real.lat, real.lng);
-        clearError();
-      }
+      onPick: placed
     });
 
     var gpsBtn = el('button.btn.btn-ghost.btn-block', {
@@ -71,32 +74,20 @@ Havak.views = Havak.views || {};
               : 'Could not get a location — tap the map instead.';
             return;
           }
-          if (!geo.inArea(fix.lat, fix.lng)) {
-            whereNote.textContent = 'You are outside the Dilijan area this map ' +
-              'covers. Tap the map to place the spot by hand.';
+          /* A real map can show anywhere, so being outside Dilijan is no longer
+             a refusal — it just moves the view. The old drawn map had to say no,
+             because it had no ground to put the pin on. */
+          if (!mapBox.place(fix.lat, fix.lng)) {
+            whereNote.textContent = 'The map is still loading — try that again in a moment.';
             return;
           }
-          var at = geo.toXY(fix.lat, fix.lng);
-          draft.loc = { x: at.x, y: at.y, lat: fix.lat, lng: fix.lng };
-          mapBox.replaceWith(mapBox = rebuildMap());
-          whereNote.textContent = 'Your location · accurate to about ' + fix.accuracy + ' m';
-          clearError();
+          /* place() drives the marker, which fires onPick -> placed(), so the
+             draft is already updated by the time we get here. */
+          whereNote.textContent = 'Your location · accurate to about ' + fix.accuracy + ' m' +
+            (geo.inArea(fix.lat, fix.lng) ? '' : ' · outside the Dilijan pilot area');
         });
       }
     });
-
-    function rebuildMap() {
-      return Havak.map.render({
-        selectable: true,
-        pin: draft.loc,
-        onPick: function (x, y) {
-          var real = geo.toLatLng(x, y);
-          draft.loc = { x: x, y: y, lat: real.lat, lng: real.lng };
-          whereNote.textContent = 'Marker placed · ' + geo.format(real.lat, real.lng);
-          clearError();
-        }
-      });
-    }
 
     var label = el('input', {
       type: 'text', maxlength: '60', required: true,
