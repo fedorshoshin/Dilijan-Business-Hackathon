@@ -189,6 +189,37 @@ What would actually fix it, best first:
    but it only halves a number that should be twenty times smaller, and direct
    connections are limited in number.
 
+**Measured again on 2026-10-02**, TCP round trip from this Chicago server to each
+Supabase pooler: Mumbai 259 ms, Zurich 168 ms, **Frankfurt 134 ms**, London 95 ms.
+Frankfurt was chosen even though London is faster *from here*, because the plan
+is to move the server next (to a VM near Armenia), and Frankfurt is the hub that
+is close to both. Until then it still halves every query.
+
+### Moving it: the runbook
+
+`server/deploy/move_db.py` does the copy, and its header explains every safety
+rule. In short: it reads the old database in a read-only snapshot and cannot
+write to it, builds the new schema from `sql/`, refuses a target that already
+has rows, copies everything in one transaction, and only reports success if an
+md5 fingerprint of every table matches on both sides. It was rehearsed against
+the live data on 2026-10-02 (all seven tables identical, 30 s), and its
+fingerprint was shown to catch a single trailing space and a single flipped flag.
+
+1. In Supabase, create a new project in **Central EU (Frankfurt)**. The old one
+   stays exactly as it is: it is the rollback.
+2. Get its **Session pooler** URI onto the server as `/root/new_db_url`, mode 600.
+   If it arrives via chat, replace its password straight away (`alter role
+   postgres password …`, run against the *new* project only) so the copy in the
+   transcript is dead before anything depends on it.
+3. `systemctl stop havak-api`. Writes stop; nothing can change mid-copy.
+4. Run `move_db.py --source-env server/.env --target-url-file /root/new_db_url`.
+5. Only if every table says MATCH: back up `.env` to `/root/havak-deploy-backup/`,
+   set `DATABASE_URL` to the new URI, `systemctl start havak-api`, and check the
+   published site. Sessions survive: `JWT_SECRET` does not change and
+   `tokens_valid_from` is copied as-is.
+6. Rollback is restoring the backed-up `.env` and restarting. Pause the old
+   project after a week of the new one working; do not delete it sooner.
+
 Nothing in the app can paper over this. What the client *does* do is avoid
 trips it does not need: claiming a spot repaints from the reply the server
 already sent instead of re-reading the whole board (`js/work.js`).
