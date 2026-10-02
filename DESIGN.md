@@ -519,8 +519,16 @@ to Europe, which is also nearer Dilijan. See `server/deploy/README.md`.
 
 ### Phase 5 — Closing the loop ⬜ *(next up)*
 
+Before any money moves, the server must stop trusting the phone about money.
+CORS / allowed origins cannot do this: only browsers obey it, and the `Origin`
+header is whatever the sender writes. Anyone signed in can replay the app's
+requests by hand, so every value has to be checked on the server.
+
 | # | Task | Done when |
 | --- | --- | --- |
+| 5.0a | **Server computes the payout** from `est_minutes` + `hazardous` (same formula as `js/money.js`); the `payout` the client sends is ignored | A hand-made POST with `payout: 1000000` stores the formula's number |
+| 5.0b | **Cap the estimate** at a realistic limit (8 h, down from 24 h), on the form and the server | 481 minutes is refused by both |
+| 5.0c | Remove `http://localhost:20220` from `ALLOWED_ORIGINS` on the VPS | Only the published origin is listed |
 | 5.1 | Reporter sees their spot has been cleaned | Badge on the Me tab and the reporter dashboard |
 | 5.2 | Confirm screen: before/after side by side, **rate cleanliness 1–5** | Rating stored on the report |
 | 5.3 | Confirmation triggers payout allocation (7.2) | `alloc` rows written; cleaner's earnings rise |
