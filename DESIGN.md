@@ -529,6 +529,9 @@ requests by hand, so every value has to be checked on the server.
 | 5.0a | **Server computes the payout** from `est_minutes` + `hazardous` (same formula as `js/money.js`); the `payout` the client sends is ignored | A hand-made POST with `payout: 1000000` stores the formula's number |
 | 5.0b | **Cap the estimate** at a realistic limit (8 h, down from 24 h), on the form and the server | 481 minutes is refused by both |
 | 5.0c | Remove `http://localhost:20220` from `ALLOWED_ORIGINS` on the VPS | Only the published origin is listed |
+| 5.0d | **Withdraw button** on your own spot's page, shown only while it is `open` (the server rule already exists: `DELETE /reports/{id}`, reporter only, open only) | Button visible to the reporter on an open spot, gone once claimed; withdrawing removes it from map and board |
+| 5.0e | **Earmarked money survives a withdrawal**: donations targeting the spot move to `general` in the same transaction as the delete | Donate to a spot, withdraw it → the pot rises by that amount, no donation points at a missing spot |
+| 5.0f | **Withdraw is one atomic step**: `delete … where status = 'open'` inside a transaction with the media rows, so a claim landing mid-delete cannot leave a half-deleted spot | Claim and withdraw racing → exactly one wins, the other gets a clear error, nothing half-done |
 | 5.1 | Reporter sees their spot has been cleaned | Badge on the Me tab and the reporter dashboard |
 | 5.2 | Confirm screen: before/after side by side, **rate cleanliness 1–5** | Rating stored on the report |
 | 5.3 | Confirmation triggers payout allocation (7.2) | `alloc` rows written; cleaner's earnings rise |
