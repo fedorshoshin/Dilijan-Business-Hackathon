@@ -8,16 +8,18 @@ Card processing is out of scope for the pilot (DESIGN.md §3): the ledger is rea
 the charge is simulated.
 """
 
+import logging
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter
 
-from .. import db
+from .. import db, payout
 from ..errors import NOT_AUTHORISED, NOT_FOUND, VALIDATION_FAILED, ApiError
 from ..models import NewDonation
 from ..security import CurrentUser
 
 router = APIRouter(tags=["money"])
+logger = logging.getLogger("havak")
 
 
 @router.post("/donations", status_code=201)
@@ -33,9 +35,16 @@ async def donate(body: NewDonation, user: dict = CurrentUser):
             report_id = UUID(target)
         except ValueError:
             raise ApiError(VALIDATION_FAILED, "That is not a valid spot to give to.")
-        exists = await db.fetchrow("select 1 from reports where id = $1", report_id)
-        if not exists:
+        spot = await db.fetchrow("select status from reports where id = $1", report_id)
+        if not spot:
             raise ApiError(NOT_FOUND, "That spot no longer exists.")
+        # A confirmed spot has been paid already, so money earmarked for it now
+        # would have nothing left to pay for.
+        if spot["status"] == "confirmed":
+            raise ApiError(
+                VALIDATION_FAILED,
+                "This spot is already cleaned and paid. Give to the general pot instead.",
+            )
         target = str(report_id)
 
     if body.client_id:
@@ -47,7 +56,7 @@ async def donate(body: NewDonation, user: dict = CurrentUser):
         if existing:
             return existing
 
-    return await db.fetchrow(
+    donation = await db.fetchrow(
         """insert into donations (id, donor_id, amount, target, client_id)
            values ($1, $2, $3, $4, $5)
         returning id, donor_id, amount, target, created_at""",
@@ -57,6 +66,17 @@ async def donate(body: NewDonation, user: dict = CurrentUser):
         target,
         body.client_id,
     )
+
+    # New money pays old debts first: cleaners whose confirmed work found the pot
+    # short. Its own transaction, after the donation is safely stored — a failure
+    # here must not lose the gift, and the next donation simply tries again.
+    try:
+        async with db.transaction() as con:
+            await payout.settle(con)
+    except Exception:
+        logger.exception("settling owed payouts after donation %s failed", donation["id"])
+
+    return donation
 
 
 @router.get("/donations/mine")
@@ -126,7 +146,8 @@ async def report_allocations(report_id: UUID, _: dict = CurrentUser):
 
 @router.get("/me/earnings")
 async def my_earnings(user: dict = CurrentUser):
-    """The cleaner's side of the ledger."""
+    """The cleaner's side of the ledger: what has been paid, and what is still
+    owed for confirmed work the pot could not yet cover."""
     rows = await db.fetch(
         """select a.id, a.amount, a.at, r.id as report_id, r.title, r.loc_label, r.rating
              from alloc a
@@ -135,4 +156,16 @@ async def my_earnings(user: dict = CurrentUser):
             order by a.at desc""",
         user["id"],
     )
-    return {"total": sum(r["amount"] for r in rows), "payments": rows}
+    owed = await db.fetchrow(
+        """select coalesce(sum(r.payout - coalesce(
+                     (select sum(a.amount) from alloc a where a.report_id = r.id), 0)), 0)::int as owed
+             from reports r
+             join claims c on c.report_id = r.id and c.status = 'done'
+            where c.cleaner_id = $1 and r.status = 'confirmed'""",
+        user["id"],
+    )
+    return {
+        "total": sum(r["amount"] for r in rows),
+        "owed": owed["owed"],
+        "payments": rows,
+    }

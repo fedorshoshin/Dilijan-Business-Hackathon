@@ -51,9 +51,11 @@ Havak.ui = (function () {
     }).join('').toUpperCase();
   }
 
-  /* money, grouped in threes: 5800 -> "5 800 AMD" */
+  /* money, grouped in threes: 5800 -> "5 800 AMD". The spaces are
+     non-breaking, so an amount never wraps into "4" on one line and "600 AMD"
+     on the next. */
   function amd(n) {
-    return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' AMD';
+    return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0') + '\u00a0AMD';
   }
 
   function minutes(n) {

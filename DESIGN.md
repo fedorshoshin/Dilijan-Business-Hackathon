@@ -372,8 +372,8 @@ backend had to be real before photos had anywhere to go.
 | 3.5 — Backend cutover | Our own FastAPI server + Postgres; real passwords, real email | ✅ 2026-09-29 *(2 leftovers)* |
 | 3 — Camera and media | Photos and video on Cloudflare R2, profile pictures | ✅ 2026-09-30 |
 | 4 — Cleaner: board and work | Jobs board, filters, claim, release, mark cleaned, earnings | ✅ 2026-10-01 |
-| **5 — Closing the loop** | **Reporter confirms and rates; the cleaner is actually paid** | ⬜ **next** |
-| 6 — Donor | Giving, and the honest "what did my money buy" dashboard | ⬜ not started |
+| 5 — Closing the loop | Reporter confirms and rates; the cleaner is actually paid | ✅ 2026-10-02 |
+| **6 — Donor** | **Giving, and the honest "what did my money buy" dashboard** | ⬜ **next** |
 | 7 — Ship quality | Real-device pass, landing page, accessibility | ⬜ not started |
 | 8 — Store build | Capacitor wrap, app stores | ⏸ parked |
 
@@ -386,8 +386,12 @@ tap targets, no sideways scroll.
 
 **Known gaps, carried forward rather than forgotten:**
 
-- The **Give** tab is still a placeholder (Phase 6), and "Earned so far" on a
-  cleaner's screen will read 0 AMD until Phase 5 moves the money.
+- The **Give** tab is still a placeholder (Phase 6). Money moves now, but the
+  only donations are the seeded ones until people can give from the app.
+- **A reporter could still inflate a spot's estimate** (up to 8 h) to raise its
+  payout. The reporter's own confirmation is the check, but the reporter is the
+  one inflating — so for now it rests on reporters and cleaners being different
+  people, which the server enforces.
 - **Nothing has been run on a real phone yet** (task 7.2). Specifically waiting:
   the camera opening, iOS video playback, and a 50 MB video surviving a relaunch.
 - The **server is still in Chicago.** The database moved to Frankfurt on
@@ -517,7 +521,7 @@ this, not just the board. The client no longer waits on a refetch it does not
 need, but the real fix is moving the database next to the server, ideally both
 to Europe, which is also nearer Dilijan. See `server/deploy/README.md`.
 
-### Phase 5 — Closing the loop ⬜ *(next up)*
+### Phase 5 — Closing the loop ✅ *(built 2026-10-02)*
 
 Before any money moves, the server must stop trusting the phone about money.
 CORS / allowed origins cannot do this: only browsers obey it, and the `Origin`
@@ -526,16 +530,19 @@ requests by hand, so every value has to be checked on the server.
 
 | # | Task | Done when |
 | --- | --- | --- |
-| 5.0a | **Server computes the payout** from `est_minutes` + `hazardous` (same formula as `js/money.js`); the `payout` the client sends is ignored | A hand-made POST with `payout: 1000000` stores the formula's number |
-| 5.0b | **Cap the estimate** at a realistic limit (8 h, down from 24 h), on the form and the server | 481 minutes is refused by both |
-| 5.0c | Remove `http://localhost:20220` from `ALLOWED_ORIGINS` on the VPS | Only the published origin is listed |
-| 5.0d | **Withdraw button** on your own spot's page, shown only while it is `open` (the server rule already exists: `DELETE /reports/{id}`, reporter only, open only) | Button visible to the reporter on an open spot, gone once claimed; withdrawing removes it from map and board |
-| 5.0e | **Earmarked money survives a withdrawal**: donations targeting the spot move to `general` in the same transaction as the delete | Donate to a spot, withdraw it → the pot rises by that amount, no donation points at a missing spot |
-| 5.0f | **Withdraw is one atomic step**: `delete … where status = 'open'` inside a transaction with the media rows, so a claim landing mid-delete cannot leave a half-deleted spot | Claim and withdraw racing → exactly one wins, the other gets a clear error, nothing half-done |
-| 5.1 | Reporter sees their spot has been cleaned | Badge on the Me tab and the reporter dashboard |
-| 5.2 | Confirm screen: before/after side by side, **rate cleanliness 1–5** | Rating stored on the report |
-| 5.3 | Confirmation triggers payout allocation (7.2) | `alloc` rows written; cleaner's earnings rise |
-| 5.4 | Dispute path: rating 1–2 → flagged, not auto-paid | Report goes to `cleaned` + `disputed`, visible to both |
+| 5.0a ✅ | **Server computes the payout** from `est_minutes` + `hazardous` (`price()` in `server/payout.py`, same formula as `js/money.js`); any `payout` the client sends is ignored | A hand-made POST with `payout: 1000000` stores 4 600 ✔; both formulas agree on all 960 inputs ✔ |
+| 5.0b ✅ | **Cap the estimate** at 8 h (was 24 h) on the server; the form's longest choice is already 4 h | 481 minutes refused, 480 accepted ✔ |
+| 5.0c ✅ | Remove `http://localhost:20220` from `ALLOWED_ORIGINS` on the VPS | Only the published origin is listed ✔ |
+| 5.0d ✅ | **Withdraw button** on your own spot's page, only while it is `open` | Shown on your open spot, absent once claimed and on other people's ✔; withdrawn spot leaves your list and the server ✔ |
+| 5.0e ✅ | **Earmarked money survives a withdrawal.** *Built differently:* donations are insert-only, so instead of rewriting their target, the draw-down counts a donation naming a missing report as general-pot money | Donate to a spot, withdraw it, a later payout spends that donation ✔ |
+| 5.0f ✅ | **Withdraw is one atomic step**: row locked, then claims, media and report deleted in one transaction. Also fixed: a spot a cleaner had given back used to fail to delete (its released claim blocked it) | Claim and withdraw fired together, 4 times: exactly one wins each time, no 500 ✔ |
+| 5.1 ✅ | Reporter sees their spot has been cleaned | Count badge on the **Report** tab (where those spots are listed, so not the Me tab) ✔; "Needs you" cards first on the list ✔ |
+| 5.2 ✅ | Confirm screen: before/after side by side, **rate cleanliness 1–5** | Rating stored and shown ✔; the button says what the rating will do before it is pressed ✔ |
+| 5.3 ✅ | Confirmation triggers payout allocation (7.2) | `alloc` rows written, cleaner's earnings rise by the payout ✔. **Added:** if the pot is short, the rest is owed and the next donation pays it automatically, oldest debt first ✔; the cleaner sees what is still owed ✔ |
+| 5.4 ✅ | Dispute path: rating 1–2 → not paid | *Changed from the plan* ("`cleaned` + `disputed`, a human decides"), because there is no such human or screen in the pilot and the money would wait forever. Now: **sent back to the same cleaner** (`claimed` + `disputed`, rating kept), who finishes and marks it cleaned again, or gives it back ✔. Shown to both ✔ |
+
+31 API checks against the live server and 25 browser checks at 390×844, all
+with throwaway `[test]` data that is deleted afterwards.
 
 ### Phase 6 — Donor ⬜ *(not started)*
 
@@ -580,11 +587,11 @@ another person's board:
 
 1. **Reporter** signs up → photographs a hazardous spot → sets level 4 and a
    90-minute estimate → watches it get claimed → confirms it clean → rates 4/5.
-   → *works up to the confirming; **confirm and rate** is Phase 5.*
+   → *works end to end since Phase 5; not yet on a real phone (7.2).*
 2. **Cleaner** signs in → filters the board to non-hazardous jobs under 2 hours
    near the centre → claims one → marks it cleaned with an after-photo → sees
    the payment land in their dashboard.
-   → *works up to the after-photo; **the payment landing** is Phase 5.*
+   → *works end to end since Phase 5; not yet on a real phone (7.2).*
 3. **Donor** signs in → gives to the general pot and to one specific cleanup →
    opens their dashboard → sees exactly which cleanups their money paid for.
    → *not started; Phase 6. The server endpoints and the ledger already exist.*
@@ -599,8 +606,8 @@ And two checks that only a pilot needs:
    pending, and appears for everyone else once signal returns.
    → *true for **photos** (3.1). A report itself is not queued yet (3.5.7).*
 
-None of the five is blocked on anything unknown: 1 and 2 need Phase 5, 3 needs
-Phase 6, 4 needs two phones in a room, and 5 needs the report write to use the
+None of the five is blocked on anything unknown: 1 and 2 need a real phone, 3
+needs Phase 6, 4 needs two phones in a room, and 5 needs the report write to use the
 outbox the photos already use.
 
 ---
@@ -657,7 +664,9 @@ layer.
 
 ### Still open
 
-3. **Payout formula** — default in 7.2. *Blocks Phase 5.*
+3. **Payout formula** — default in 7.2, now enforced by the server. The rates
+   are still a first guess, to tune with real Dilijan prices; change
+   `server/payout.py` and `js/money.js` together.
 4. **Who pays cleaners: money or points?** The task list says money, so money it
    is; confirm that is the real intent for Dilijan and not a hackathon artifact.
 5. **Certificate** — keep, drop, or rebuild on the new account model (section 11).

@@ -218,7 +218,8 @@ Havak.api = (function () {
       level: rec.level,
       hazardous: !!rec.hazardous,
       est_minutes: rec.estMinutes,
-      payout: rec.payout,
+      /* No payout: the server prices every spot itself from the two fields
+         above. The form's figure is a preview of the same formula. */
       client_id: rec.clientId || uuid()
     };
   }
@@ -485,9 +486,14 @@ Havak.api = (function () {
       return request('POST', '/reports/' + encodeURIComponent(reportId) + '/confirm', {
         body: { rating: rating }
       }).then(function (res) {
+        res = res || {};
         return {
-          shortfall: (res && res.shortfall) || 0,
-          allocations: ((res && res.allocations) || []).map(allocFromWire)
+          report: reportFromWire(res.report),
+          /* 1-2 stars: sent back to the cleaner, nothing paid */
+          disputed: !!res.disputed,
+          /* > 0 when the pot ran short; owed, and paid as donations arrive */
+          shortfall: res.shortfall || 0,
+          allocations: (res.allocations || []).map(allocFromWire)
         };
       });
     },
@@ -535,6 +541,8 @@ Havak.api = (function () {
         e = e || {};
         return {
           total: e.total || 0,
+          /* confirmed work the pot could not yet cover */
+          owed: e.owed || 0,
           payments: (e.payments || []).map(allocFromWire)
         };
       });

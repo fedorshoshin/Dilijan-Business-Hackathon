@@ -1076,6 +1076,7 @@ body.app.no-tabs #screen { padding-bottom: calc(var(--safe-b) + var(--s-4)); }
   padding-bottom: var(--safe-b);
 }
 .tab {
+  position: relative;
   flex: 1;
   min-height: var(--tab-h);
   display: flex;
@@ -1665,3 +1666,74 @@ form .panel:first-child { margin-top: var(--s-4); }
   margin-top: var(--s-1);
 }
 .earned-note { font-size: var(--t-sm); color: var(--muted); margin-top: var(--s-1); }
+
+/* ---------- closing the loop (Phase 5) ---------- */
+
+/* How many spots wait on this reporter's check. Sits on the icon's shoulder,
+   so it never covers the label. */
+.tab-badge {
+  position: absolute;
+  top: var(--s-1);
+  left: calc(50% + var(--s-2));
+  min-width: 20px;
+  height: 20px;
+  padding: 0 var(--s-1);
+  border-radius: 999px;
+  background: var(--red);
+  color: var(--white);
+  font-size: var(--t-sm);
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Before and after, the same size, side by side: the comparison is the whole
+   point, and a stacked pair makes you scroll between the two halves of it. */
+.compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-2);
+}
+.compare-side { margin: 0; }
+.compare-side img,
+.compare-missing {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: var(--r-md);
+  background: var(--stone);
+}
+.compare-missing {
+  display: grid;
+  place-items: center;
+  font-size: var(--t-sm);
+  color: var(--muted);
+}
+.compare-side figcaption {
+  margin-top: var(--s-1);
+  font-size: var(--t-sm);
+  font-weight: 650;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* What the chosen rating will do, said before the button is pressed. */
+.confirm-effect {
+  margin: var(--s-3) 0 var(--s-4);
+  padding: var(--s-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--line-green);
+  background: var(--green-sf);
+  color: var(--green-dk);
+  transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease),
+              border-color var(--dur) var(--ease);
+}
+.confirm-effect.is-back {
+  border-color: var(--line-amber);
+  background: var(--amber-sf);
+  color: var(--amber);
+}
+
+.next-paid { margin-top: var(--s-1); color: var(--green-dk); }

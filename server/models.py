@@ -78,8 +78,12 @@ class NewReport(BaseModel):
     loc_label: str = Field(min_length=1, max_length=160)
     level: int = Field(ge=1, le=5)
     hazardous: bool = False
-    est_minutes: int = Field(ge=1, le=24 * 60)
-    payout: int = Field(ge=0)
+    # 8 hours: beyond that it is not one person's afternoon but a council job,
+    # and an estimate is the one number a reporter can inflate to raise a payout.
+    est_minutes: int = Field(ge=1, le=8 * 60)
+    # No `payout`: the server prices every spot itself (payout.price). Older
+    # copies of the app still send one; pydantic drops unknown fields, so it is
+    # ignored rather than refused.
     client_id: UUID | None = None
 
 

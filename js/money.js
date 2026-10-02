@@ -1,16 +1,18 @@
 /* Havak — what a cleanup pays.
 
-   One formula, in one place, because it is quoted in three: the report form
-   shows the reporter what their spot will cost, the jobs board shows the
-   cleaner what they will earn, and the payout is drawn from it at confirmation.
-   If those three ever disagree, people stop trusting the app.
+   The form uses this to show a reporter what their spot will pay, and to
+   explain the number. It does not decide it: the server prices every spot
+   itself, with the same formula (`price` in server/payout.py), and ignores any
+   figure the phone sends — the app's code is public, so a phone's number could
+   be anything. Change the rates in both places at once, or the form will quote
+   a price the server does not store.
 
    The payout is fixed when the report is created and never recalculated —
    a cleaner who claims a job for 5 800 AMD gets 5 800 AMD, even if the formula
    changes next month. (BACKEND.md §3.7.)
 
    DESIGN.md open decision #3: these numbers are a first pass, to be tuned with
-   real Dilijan rates. Changing them here changes them everywhere. */
+   real Dilijan rates. */
 
 window.Havak = window.Havak || {};
 

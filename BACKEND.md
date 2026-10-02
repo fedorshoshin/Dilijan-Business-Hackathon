@@ -181,10 +181,13 @@ then draws down the payout and writes `alloc` rows:
 - stopping when `payout` is covered.
 
 If the pot cannot cover it, allocate what exists and return the shortfall; do
-not fail the confirmation. A cleaned riverbank is still cleaned.
+not fail the confirmation. A cleaned riverbank is still cleaned. The shortfall
+is owed, never stored — `payout - sum(alloc)` — and `settle()` pays it from the
+next donation, oldest debt first.
 
-If `rating <= 2`, set `disputed = true` and **do not allocate** — a human
-decides. (`DESIGN.md` task 5.4.)
+If `rating <= 2` this function is not called: the report goes back to the same
+cleaner (`status='claimed'`, `disputed = true`, rating kept) and nothing is
+allocated. (`DESIGN.md` task 5.4.)
 
 This function is the single most important thing on the server. It is what makes
 the donor dashboard honest instead of a pie chart, and it must be the only

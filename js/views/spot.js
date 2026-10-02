@@ -1,9 +1,9 @@
 /* Havak — one report, seen by anybody (task 2.5).
 
    The same screen for all three roles. What differs is the action offered at
-   the bottom, which is decided by who you are and what state the report is in.
-   The actions themselves land in Phases 4, 5 and 6; this screen is where they
-   will hang. */
+   the bottom, which is decided by who you are and what state the report is in:
+   a cleaner takes it on (Havak.work), the reporter withdraws it while nobody
+   has, and the reporter checks and rates the work once it is cleaned. */
 
 window.Havak = window.Havak || {};
 Havak.views = Havak.views || {};
@@ -20,6 +20,10 @@ Havak.views = Havak.views || {};
 
   var LEVEL_WORD = ['', 'A few items', 'A bagful', 'Several bags', 'A big pile', 'A dumping ground'];
 
+  /* How clean the reporter finds it. 1 and 2 send the job back (see confirm()),
+     so their words say "not done" rather than merely "not great". */
+  var RATING_WORD = ['', 'Not cleaned', 'Barely started', 'Mostly clean', 'Clean', 'Spotless'];
+
   function fact(label, value) {
     return el('div.fact', null, [
       el('dt', { text: label }),
@@ -30,7 +34,7 @@ Havak.views = Havak.views || {};
   /* Before and after, each a swipeable strip. The reporter can add to
      "before", the cleaner working the spot to "after" — the same rule the
      server enforces; this only decides which buttons to show. */
-  function photos(report, me, mine, iAmCleaner) {
+  function photos(report, me, mine, iAmCleaner, onLoaded) {
     var box = el('section.spot-photos', { 'aria-label': 'Photos' });
     var urls = [];
     var painted = false;
@@ -43,6 +47,7 @@ Havak.views = Havak.views || {};
         urls = got.pending.map(function (p) { return p.url; });
         got.pending.forEach(function (p) { p.pending = state || 'Uploading…'; });
 
+        if (onLoaded) onLoaded(got);
         box.textContent = '';
         if (got.failed) {
           box.appendChild(el('p.field-hint', { text: 'Photos could not be loaded right now.' }));
@@ -148,9 +153,166 @@ Havak.views = Havak.views || {};
     });
   };
 
+  /* ---------- the reporter's check (tasks 5.2-5.4) ----------
+     The first photo of each side by side, a 1-5 rating, and one button whose
+     words say what that rating will do — pay, or send the job back — before it
+     is pressed. The money is not the reporter's, so the button says whose it
+     is: the pot's. */
+  function confirmPanel(report, cleaner, onDone) {
+    var who = cleaner ? cleaner.name.split(' ')[0] : 'the cleaner';
+    var rating = 0;
+
+    var compare = el('div.compare', { hidden: true });
+
+    function side(label, item) {
+      return el('figure.compare-side', null, [
+        item
+          ? el('img', { src: item.url, alt: label + ' photo', loading: 'lazy', decoding: 'async' })
+          : el('span.compare-missing', { text: 'No photo' }),
+        el('figcaption', { text: label })
+      ]);
+    }
+
+    /* Called by the photo section once it has loaded, so the pictures are
+       fetched once for the whole screen. Video is skipped: a still beside a
+       still is the comparison, and every after must include a photo anyway. */
+    function fill(got) {
+      var shots = got.uploaded.filter(function (m) { return /^image\//.test(m.mime); });
+      var first = function (kind) {
+        for (var i = 0; i < shots.length; i++) if (shots[i].kind === kind) return shots[i];
+        return null;
+      };
+      compare.textContent = '';
+      compare.appendChild(side('Before', first('before')));
+      compare.appendChild(side('After', first('after')));
+      compare.hidden = false;
+    }
+
+    var word = el('p.field-hint', { text: 'Tap a number.' });
+    var effect = el('p.confirm-effect', { hidden: true });
+    var go = el('button.btn.btn-primary.btn-block.btn-lg', {
+      type: 'button', text: 'Rate the work first', disabled: true
+    });
+
+    var row = el('div.segmented', { role: 'radiogroup', 'aria-label': 'How clean is it now?' },
+      [1, 2, 3, 4, 5].map(function (n) {
+        return el('button.seg', {
+          type: 'button',
+          role: 'radio',
+          'aria-checked': 'false',
+          'aria-label': n + ' — ' + RATING_WORD[n],
+          text: String(n),
+          onclick: function () { pick(n); }
+        });
+      }));
+
+    function pick(n) {
+      rating = n;
+      Array.prototype.forEach.call(row.children, function (b, i) {
+        var on = i + 1 === n;
+        b.classList.toggle('is-on', on);
+        b.setAttribute('aria-checked', on ? 'true' : 'false');
+      });
+      word.textContent = n + ' — ' + RATING_WORD[n];
+      var sendBack = n <= 2;
+      effect.hidden = false;
+      effect.classList.toggle('is-back', sendBack);
+      effect.textContent = sendBack
+        ? 'Sends it back to ' + who + ' to finish. Nobody is paid until you confirm it clean.'
+        : 'Confirms the cleanup and pays ' + who + ' ' + ui.amd(report.payout) + ' from the pot.';
+      go.disabled = false;
+      go.textContent = sendBack ? 'Send it back' : 'Confirm and pay';
+    }
+
+    go.addEventListener('click', function () {
+      if (!rating) return;
+      var was = go.textContent;
+      go.disabled = true;
+      go.textContent = 'Saving…';
+      Havak.api.confirm(report.id, rating).then(function (res) {
+        store.adoptReport(res.report);
+        store.invalidate('alloc');
+        if (res.disputed) {
+          ui.toast('Sent back to ' + who + '.');
+        } else if (res.shortfall > 0) {
+          /* The pot ran short. Said as it is: the rest is owed, not lost. */
+          ui.toast(ui.amd(report.payout - res.shortfall) + ' paid now, ' +
+                   ui.amd(res.shortfall) + ' as donations arrive.');
+        } else {
+          ui.toast('Confirmed. ' + who + ' has been paid ' + ui.amd(report.payout) + '.');
+        }
+        onDone();
+      }, function (err) {
+        go.disabled = false;
+        go.textContent = was;
+        ui.toast(err.message || 'That did not save. Try again.');
+      });
+    });
+
+    return {
+      fill: fill,
+      node: el('section.panel.confirm', null, [
+        el('div.panel-head', null, [
+          el('h2', { text: report.disputed ? 'Is it finished now?' : 'Is it really clean?' }),
+          el('p.sub', { text: 'Compare the photos, then rate how clean the spot is now.' })
+        ]),
+        compare,
+        el('div.field', null, [
+          el('span.field-label', { text: 'How clean is it now?' }),
+          row,
+          word
+        ]),
+        effect,
+        go
+      ])
+    };
+  }
+
+  /* What a confirmed cleanup actually paid — read off the ledger, not the
+     quoted price, because the two differ whenever the pot was short. */
+  function paidLine(report) {
+    var line = el('p.next-paid', { hidden: true });
+    Havak.api.allocations(report.id).then(function (rows) {
+      var paid = rows.reduce(function (n, a) { return n + a.amount; }, 0);
+      line.hidden = false;
+      line.textContent = paid >= report.payout
+        ? 'The cleaner was paid ' + ui.amd(paid) + ' from the pot.'
+        : ui.amd(paid) + ' of ' + ui.amd(report.payout) +
+          ' paid so far. The rest follows as donations arrive.';
+    }, function () { /* the status above still says what matters */ });
+    return line;
+  }
+
+  /* The reporter may take a spot back only while nobody is working on it —
+     the server's rule; this decides only whether to show the button. */
+  function withdrawButton(report) {
+    var node = el('button.btn.btn-ghost.btn-block', {
+      type: 'button',
+      text: 'Withdraw this report',
+      onclick: function () {
+        if (!window.confirm('Withdraw this report? It disappears from the map and the jobs board, with its photos.')) return;
+        node.disabled = true;
+        node.textContent = 'Withdrawing…';
+        store.remove('reports', report.id).then(function () {
+          ui.toast('Withdrawn.');
+          Havak.router.go('/report', true);
+        }, function (err) {
+          node.disabled = false;
+          node.textContent = 'Withdraw this report';
+          ui.toast(err.message || 'That could not be withdrawn.');
+          /* Most likely a cleaner took it a moment ago: show them. */
+          Havak.router.render();
+        });
+      }
+    });
+    return el('div.work-actions', null, [node]);
+  }
+
   function paint(screen, report, reporter, cleaner, me) {
     var mine = reporter && me && reporter.id === me.id;
     var iAmCleaner = cleaner && me && cleaner.id === me.id;
+    var first = cleaner ? cleaner.name.split(' ')[0] : null;
+    var sentBack = report.status === 'claimed' && report.disputed;
 
     /* what happens next, said plainly, tailored to who is reading */
     var next;
@@ -158,13 +320,23 @@ Havak.views = Havak.views || {};
       next = mine
         ? 'Waiting for a cleaner to take it on.'
         : 'Nobody has taken this on yet.';
+    } else if (sentBack) {
+      next = iAmCleaner
+        ? 'Sent back: the reporter rated it ' + report.rating + '/5. Finish the job, add a photo, ' +
+          'and mark it cleaned again — or give it back.'
+        : mine
+          ? 'You sent this back with ' + report.rating + '/5. ' + (first || 'The cleaner') +
+            ' can finish it or give it back.'
+          : 'Sent back to the cleaner to finish.';
     } else if (report.status === 'claimed') {
       next = iAmCleaner
         ? 'You have taken this on. Mark it cleaned when you are done.'
-        : (cleaner ? cleaner.name.split(' ')[0] + ' has taken this on.' : 'A cleaner has taken this on.');
+        : (first ? first + ' has taken this on.' : 'A cleaner has taken this on.');
     } else if (report.status === 'cleaned') {
       next = mine
-        ? 'Cleaned — check the photos and confirm it is really done.'
+        ? (report.disputed
+            ? 'Cleaned again after you sent it back. Check the new photos below.'
+            : 'Cleaned. Check the photos and rate the work below.')
         : 'Cleaned, waiting for the reporter to confirm.';
     } else {
       next = report.rating
@@ -172,11 +344,15 @@ Havak.views = Havak.views || {};
         : 'Confirmed clean.';
     }
 
+    var repaint = function () { Havak.router.render(); };
+    var check = report.status === 'cleaned' && mine ? confirmPanel(report, cleaner, repaint) : null;
+
     var body = el('div.wrap.pad', null, [
       el('div.spot-head', null, [
         el('div.rcard-top', null, [
           ui.statusTag(report.status),
-          report.hazardous ? el('span.tag.tag-hazard', { text: 'Hazardous' }) : null
+          report.hazardous ? el('span.tag.tag-hazard', { text: 'Hazardous' }) : null,
+          sentBack ? el('span.tag.tag-open', { text: 'Sent back' }) : null
         ]),
         el('h1.spot-title', { text: report.title }),
         el('p.sub', {
@@ -194,7 +370,7 @@ Havak.views = Havak.views || {};
 
       el('p.spot-desc', { text: report.desc }),
 
-      photos(report, me, mine, iAmCleaner),
+      photos(report, me, mine, iAmCleaner, check ? check.fill : null),
 
       Havak.map.render({ reports: [report] }),
 
@@ -209,16 +385,17 @@ Havak.views = Havak.views || {};
       ]),
 
       el('div.next-up', null, [
-        el('p.next-text', { text: next })
+        el('p.next-text', { text: next }),
+        report.status === 'confirmed' ? paidLine(report) : null
       ]),
+
+      check ? check.node : null,
 
       /* The state changed under everyone, not just here — so repaint from the
          server rather than patching this screen's copy of the report. */
-      Havak.work.actions(report, me, function () { Havak.router.render(); }),
+      Havak.work.actions(report, me, repaint),
 
-      report.status === 'cleaned' && mine
-        ? el('p.phase-note', { text: 'Confirming and rating the work lands in Phase 5.' })
-        : null
+      report.status === 'open' && mine ? withdrawButton(report) : null
     ]);
 
     screen.appendChild(body);

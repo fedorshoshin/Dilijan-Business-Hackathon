@@ -61,6 +61,37 @@ Havak.shell = (function () {
       ]));
     });
     markActive(Havak.router.path());
+    badge(user);
+  }
+
+  /* Task 5.1: a count on the Report tab of spots cleaned and waiting for this
+     reporter's check. The tab rather than the Me tab the plan first named,
+     because the Report tab is where those spots are listed — a badge should sit
+     on the door you go through to deal with it.
+
+     Read from the store's cached list, so it costs nothing on most screens and
+     is as fresh as the last time any screen loaded the reports. */
+  function badge(user) {
+    if (!auth.hasRole('reporter', user)) return;
+    Havak.store.where('reports', function (r) {
+      return r.reporterId === user.id && r.status === 'cleaned';
+    }).then(function (waiting) {
+      var tab = document.querySelector('#tabbar .tab[data-tab="/report"]');
+      if (!tab) return;
+      var n = waiting.length;
+      var dot = tab.querySelector('.tab-badge');
+      if (!n) {
+        if (dot) dot.remove();
+        tab.setAttribute('aria-label', 'Report');
+        return;
+      }
+      if (!dot) {
+        dot = el('span.tab-badge', { 'aria-hidden': 'true' });
+        tab.appendChild(dot);
+      }
+      dot.textContent = String(n);
+      tab.setAttribute('aria-label', 'Report, ' + n + (n === 1 ? ' spot needs' : ' spots need') + ' your check');
+    }, function () { /* offline: no badge is better than a wrong one */ });
   }
 
   function markActive(path) {

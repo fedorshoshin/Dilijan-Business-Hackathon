@@ -1,8 +1,10 @@
 """Reports and the cleaning lifecycle.
 
-  open ──claim──▶ claimed ──cleaned──▶ cleaned ──confirm──▶ confirmed
-                     │
-                     └──release──▶ open
+  open ──claim──▶ claimed ──cleaned──▶ cleaned ──confirm 3-5──▶ confirmed
+   │                 │  ▲                 │
+   │                 │  └──confirm 1-2────┘  sent back to the same cleaner
+   │                 └──release──▶ open
+   └──withdraw──▶ (gone)
 
 Each transition is its own endpoint rather than a PATCH on `status`, because each
 has a different rule about who is allowed to make it (BACKEND.md §3) and a
@@ -120,7 +122,9 @@ async def create_report(body: NewReport, user: dict = CurrentUser):
         body.level,
         body.hazardous,
         body.est_minutes,
-        body.payout,
+        # Priced here, from the two inputs, never taken from the request: the
+        # app's own code is public, so anything it sends can be hand-written.
+        payout.price(body.est_minutes, body.hazardous),
         body.client_id,
     )
     return storage.sign_urls(await _load(row["id"]))
@@ -128,14 +132,36 @@ async def create_report(body: NewReport, user: dict = CurrentUser):
 
 @router.delete("/reports/{report_id}")
 async def delete_report(report_id: UUID, user: dict = CurrentUser):
-    """Withdraw a report — only your own, and only before anyone starts work."""
-    report = await _load(report_id)
-    if report["reporter_id"] != user["id"]:
-        raise ApiError(NOT_AUTHORISED, "You can only withdraw your own report.")
-    if report["status"] != "open":
-        raise ApiError(VALIDATION_FAILED, "Someone is already working on this spot.")
-    keys = await db.fetch("delete from media where report_id = $1 returning bucket_key", report_id)
-    await db.execute("delete from reports where id = $1", report_id)
+    """Withdraw a report — only your own, and only before anyone starts work.
+
+    One transaction, with the row locked first: a cleaner claiming in the same
+    instant either waits and finds the spot gone, or got there first and this
+    refuses. Never half of each.
+
+    Money earmarked for the spot is not touched — payout.py counts donations
+    that name a missing report as part of the general pot.
+    """
+    async with db.transaction() as con:
+        report = await con.fetchrow(
+            "select reporter_id, status from reports where id = $1 for update", report_id
+        )
+        if not report:
+            raise ApiError(NOT_FOUND, "That spot no longer exists.")
+        if report["reporter_id"] != user["id"]:
+            raise ApiError(NOT_AUTHORISED, "You can only withdraw your own report.")
+        if report["status"] != "open":
+            raise ApiError(VALIDATION_FAILED, "Someone is already working on this spot.")
+        # An open spot can still carry 'released' claims from cleaners who gave
+        # it back; they reference the report and would block deleting it.
+        await con.execute("delete from claims where report_id = $1", report_id)
+        keys = await con.fetch(
+            "delete from media where report_id = $1 returning bucket_key", report_id
+        )
+        await con.execute("delete from reports where id = $1", report_id)
+
+    # Only once the rows are gone for certain. A failed delete here leaves an
+    # orphaned file, which is harmless; deleting first could leave a report
+    # pointing at photos that no longer exist.
     for row in keys:
         await storage.delete(storage.MEDIA_BUCKET, row["bucket_key"])
     return {"ok": True}
@@ -199,8 +225,12 @@ async def release_claim(report_id: UUID, user: dict = CurrentUser):
             raise ApiError(NOT_AUTHORISED, "This is not your claim.")
 
         await con.execute("update claims set status = 'released' where id = $1", claim["id"])
+        # A sent-back job given up carries its dispute away with it: the next
+        # cleaner starts clean, not under someone else's poor rating.
         await con.execute(
-            "update reports set status = 'open' where id = $1 and status = 'claimed'", report_id
+            """update reports set status = 'open', rating = null, disputed = false
+                where id = $1 and status = 'claimed'""",
+            report_id,
         )
     return storage.sign_urls(await _load(report_id))
 
@@ -249,10 +279,14 @@ async def mark_cleaned(report_id: UUID, user: dict = CurrentUser):
 
 @router.post("/reports/{report_id}/confirm")
 async def confirm_report(report_id: UUID, body: Confirm, user: dict = CurrentUser):
-    """Confirm the work, rate it, and pay the cleaner from real donations.
+    """The reporter's verdict on the work. Only the reporting user (invariant 3.3).
 
-    Only the reporting user (invariant 3.3). A rating of 1-2 marks the report
-    disputed and holds the money for a human to look at.
+    3 to 5: confirmed, and the cleaner is paid from real donations.
+    1 or 2: a dispute. The spot goes back to the same cleaner with the rating
+    on it — still theirs, to finish and mark cleaned again, or to give back. No
+    money moves. (DESIGN.md 5.4: the earlier plan held disputed spots for "a
+    human to decide", but there is no such human or screen in the pilot, so the
+    money would have waited forever. Sending it back needs nobody else.)
     """
     async with db.transaction() as con:
         report = await con.fetchrow(
@@ -265,13 +299,27 @@ async def confirm_report(report_id: UUID, body: Confirm, user: dict = CurrentUse
         if report["status"] != "cleaned":
             raise ApiError(VALIDATION_FAILED, "This spot has not been marked cleaned yet.")
 
-        result = await payout.confirm_and_pay(con, report_id, body.rating)
+        if body.rating <= 2:
+            await con.execute(
+                """update reports
+                      set status = 'claimed', rating = $2, disputed = true, cleaned_at = null
+                    where id = $1""",
+                report_id,
+                body.rating,
+            )
+            await con.execute(
+                "update claims set cleaned_at = null where report_id = $1 and status = 'active'",
+                report_id,
+            )
+            result = {"allocations": [], "shortfall": 0}
+        else:
+            result = await payout.confirm_and_pay(con, report_id, body.rating)
 
     return {
         "report": storage.sign_urls(await _load(report_id)),
         "allocations": result["allocations"],
         "shortfall": result["shortfall"],
-        "disputed": result["disputed"],
+        "disputed": body.rating <= 2,
     }
 
 

@@ -314,13 +314,14 @@ Havak.views = Havak.views || {};
   var MINE_NEXT = {
     claimed:   'Yours to clean. Add an after photo, then mark it cleaned.',
     cleaned:   'Waiting for the reporter to check your photos.',
-    confirmed: 'Confirmed and paid.',
+    confirmed: 'Confirmed by the reporter.',
     open:      'You gave this one back.'
   };
 
   function mineCard(report, earnedFor) {
     var paid = earnedFor[report.id];
     var meta = [ui.minutes(report.estMinutes), ui.amd(report.payout)];
+    var sentBack = report.status === 'claimed' && report.disputed;
 
     return el('li', null, [
       el('button.rcard.rcard-tap' + (report.status === 'claimed' ? '.needs-you' : ''), {
@@ -331,24 +332,32 @@ Havak.views = Havak.views || {};
         el('div.rcard-top', null, [
           ui.statusTag(report.status),
           report.status === 'claimed' ? el('span.tag.tag-you', { text: 'To do' }) : null,
-          report.disputed ? el('span.tag.tag-hazard', { text: 'Disputed' }) : null
+          sentBack ? el('span.tag.tag-open', { text: 'Sent back' }) : null
         ]),
         el('h3.rcard-title', { text: report.title }),
         el('p.rcard-where', { text: report.loc.label }),
         el('p.rcard-meta', { text: meta.join(' · ') }),
-        el('p.rcard-meta', { text: MINE_NEXT[report.status] || '' }),
+        el('p.rcard-meta', {
+          text: sentBack
+            ? 'The reporter rated it ' + report.rating + '/5. Finish it and mark it cleaned again.'
+            : MINE_NEXT[report.status] || ''
+        }),
         paid ? el('p.job-pay', { text: ui.amd(paid) + ' paid' }) : null
       ])
     ]);
   }
 
   function mine(screen) {
+    /* Earnings straight from the server rather than the store's cache: they
+       change when a reporter confirms on their own phone, and this is the
+       screen a cleaner opens to see whether that has happened yet. */
     return Promise.all([
       store.all('myjobs'),
-      store.all('alloc')
+      Havak.api.earnings()
     ]).then(function (r) {
       var jobs = r[0];
-      var payments = r[1];
+      var payments = r[1].payments;
+      var owed = r[1].owed;
 
       /* Earnings are the sum of this cleaner's alloc rows — the same number the
          ledger would give, not a count of jobs times their quoted payout. Those
@@ -362,7 +371,9 @@ Havak.views = Havak.views || {};
 
       var ORDER = { claimed: 0, cleaned: 1, confirmed: 2, open: 3 };
       jobs.sort(function (a, b) {
-        var d = (ORDER[a.status] || 9) - (ORDER[b.status] || 9);
+        /* `in`, not `||`: claimed is 0, and 0 || 9 would sort the jobs that
+           need doing to the bottom. */
+        var d = (a.status in ORDER ? ORDER[a.status] : 9) - (b.status in ORDER ? ORDER[b.status] : 9);
         return d !== 0 ? d : (b.myClaim && b.myClaim.claimedAt) - (a.myClaim && a.myClaim.claimedAt);
       });
 
@@ -382,9 +393,16 @@ Havak.views = Havak.views || {};
           el('p.earned-sum', { text: ui.amd(earned) }),
           el('p.earned-note', {
             text: done
-              ? done + (done === 1 ? ' cleanup' : ' cleanups') + ' confirmed and paid'
+              ? done + (done === 1 ? ' cleanup' : ' cleanups') + ' confirmed'
               : 'Paid when a reporter confirms your work.'
-          })
+          }),
+          /* The pot ran short when one of these was confirmed. Not lost: the
+             next donations pay it, oldest first. */
+          owed
+            ? el('p.earned-note', {
+                text: ui.amd(owed) + ' still owed — paid as donations arrive.'
+              })
+            : null
         ]),
 
         el('div.stats', null, [

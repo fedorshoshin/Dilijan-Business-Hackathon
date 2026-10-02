@@ -279,7 +279,6 @@ Havak.views = Havak.views || {};
           level: draft.level,
           hazardous: draft.hazardous,
           estMinutes: draft.estMinutes,
-          payout: money.payoutFor(draft),
           media: [],
           status: 'open'
         }).then(function (report) {
