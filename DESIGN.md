@@ -390,9 +390,10 @@ tap targets, no sideways scroll.
   cleaner's screen will read 0 AMD until Phase 5 moves the money.
 - **Nothing has been run on a real phone yet** (task 7.2). Specifically waiting:
   the camera opening, iOS video playback, and a 50 MB video surviving a relaunch.
-- The **database is in Mumbai and the server in Chicago**, so every screen is
-  seconds slower than it should be. Measurements and the fix are in
-  `server/deploy/README.md`; this is a deployment decision, not a code one.
+- The **server is still in Chicago.** The database moved to Frankfurt on
+  2026-10-02, which made every query about 3x faster (608 -> 199 ms); moving the
+  server next to it is the other half, and is waiting on a new VM. Numbers in
+  `server/deploy/README.md`.
 - Two leftovers from Phase 3.5: a **report** written with no signal is not
   queued the way photos are (3.5.7), and the **two-phone test** has never been
   run — cross-user flows are proven between accounts in one browser (3.5.8).
@@ -625,8 +626,9 @@ layer.
 
 6. **Which backend** — *settled 2026-09-29.* Our own FastAPI server on the VPS,
    with Supabase as the Postgres behind it. The browser never talks to the
-   database. **Still to decide: which region** — the server is in Chicago and the
-   database in Mumbai, which costs every screen seconds (`server/deploy/README.md`).
+   database. **Region: Frankfurt** — the database moved there on 2026-10-02 (it
+   was in Mumbai, with the server in Chicago, costing every screen seconds). The
+   server follows when a new VM is rented; it should go in or near Frankfurt.
 
 ### Settled (2026-09-21)
 

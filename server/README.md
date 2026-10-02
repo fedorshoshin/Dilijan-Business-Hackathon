@@ -73,7 +73,8 @@ IPv6 address only — Supabase charges extra for IPv4 there. On an IPv4-only
 server that fails at DNS with `Temporary failure in name resolution`, which
 looks like a database problem but happens before Postgres is contacted. Take the
 **Connect → Session pooler** URI instead, and note the username becomes
-`postgres.<project-ref>` rather than plain `postgres`.
+`<role>.<project-ref>` rather than a bare role name. The server's role is
+`havak_api`, not `postgres` — see `server/deploy/README.md`.
 
 **HTTPS is mandatory, not a nicety.** The published site is HTTPS, so a browser
 refuses to call an HTTP API from it — mixed content is blocked outright. Put the

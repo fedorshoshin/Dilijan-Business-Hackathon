@@ -139,9 +139,43 @@ curl -sS -D- -o /dev/null -X OPTIONS \
   https://b11871fb3b06d70d513e65922be5a9cb.r2.cloudflarestorage.com/havak/x
 ```
 
-## The database is on the wrong continent
+## The database is on the wrong continent — moved 2026-10-02
 
-Measured from the VPS on 2026-10-01, and this is the single biggest thing
+**Done.** The database now lives in a new Supabase project in **Frankfurt**
+(`eu-central-1`, Postgres 17). The old Mumbai project is untouched and is the
+rollback, but it stopped receiving writes at 14:21 UTC on 2026-10-02, so rolling
+back after that loses whatever was written since.
+
+| Measured from this Chicago server | Mumbai (before) | Frankfurt (now) |
+| --- | --- | --- |
+| Opening a connection | 1 936 ms | 748 ms |
+| One `select 1` | 608 ms | 199 ms |
+
+So every query is about three times faster before the server has moved at all.
+The server moves next, to a VM near Armenia; put it in or near Frankfurt and
+those numbers drop to single-digit milliseconds.
+
+How the cutover went: API stopped 14:20:40, started 14:21:17 UTC (37 s down);
+`move_db.py` copied all seven tables and every fingerprint matched; the live-site
+suite (16 checks) and a real write through the API passed afterwards.
+
+**The server no longer logs in as `postgres`.** It uses its own role,
+`havak_api`: `select, insert, update, delete` on every table in `public`, plus
+`bypassrls` — the server has always bypassed the browser-facing RLS policies,
+because it does its own authorisation. It cannot alter the schema, create
+roles or databases, or do anything else `postgres` can. Its password was
+generated on the server, sent to Postgres only as a SCRAM verifier, and exists
+nowhere but `server/.env`. Default privileges are set, so a table created later
+*by postgres* is readable and writable by `havak_api` without a fresh grant.
+Consequence: **schema migrations are run as `postgres`** in the Supabase SQL
+editor; `havak_api` cannot run them. (Supabase also forbids `postgres` from
+changing its own password over SQL — reset it in the dashboard, Project
+Settings → Database.)
+
+The history below is kept because it explains why this was worth doing.
+
+
+Measured from the VPS on 2026-10-01, when it was the single biggest thing
 between the pilot and a usable app:
 
 | | |
@@ -207,14 +241,19 @@ fingerprint was shown to catch a single trailing space and a single flipped flag
 
 1. In Supabase, create a new project in **Central EU (Frankfurt)**. The old one
    stays exactly as it is: it is the rollback.
-2. Get its **Session pooler** URI onto the server as `/root/new_db_url`, mode 600.
-   If it arrives via chat, replace its password straight away (`alter role
-   postgres password …`, run against the *new* project only) so the copy in the
-   transcript is dead before anything depends on it.
+2. Get its **Session pooler** URI (the `postgres` login) onto the server, mode
+   600, percent-encoding the password. Use it only as the *admin* login for the
+   copy. Create the app's own `havak_api` role with a password generated on the
+   server (see above), and point `.env` at that. If the `postgres` password
+   travelled through a chat or email, reset it in the dashboard once the move is
+   done — nothing depends on it, so the reset breaks nothing. (Changing it over
+   SQL does not work: Supabase refuses with "Only superusers can alter
+   privileged roles".)
 3. `systemctl stop havak-api`. Writes stop; nothing can change mid-copy.
 4. Run `move_db.py --source-env server/.env --target-url-file /root/new_db_url`.
-5. Only if every table says MATCH: back up `.env` to `/root/havak-deploy-backup/`,
-   set `DATABASE_URL` to the new URI, `systemctl start havak-api`, and check the
+5. Only if every table says MATCH: grant `havak_api` its rights, back up `.env`
+   to `/root/havak-deploy-backup/`, set `DATABASE_URL` to the `havak_api` URI,
+   `systemctl start havak-api`, and check the
    published site. Sessions survive: `JWT_SECRET` does not change and
    `tokens_valid_from` is copied as-is.
 6. Rollback is restoring the backed-up `.env` and restarting. Pause the old
