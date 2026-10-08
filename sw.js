@@ -19,7 +19,7 @@
    list changes — the strategy below serves the cache first, so an install that
    still held v2 would keep running the old offline-only app forever. Dropping
    the old cache on activate is what makes returning phones pick this up. */
-var CACHE = 'havak-shell-v9';
+var CACHE = 'havak-shell-v10';
 
 /* Map tiles, kept apart from the shell on purpose. They are somebody else's
    bytes, they are cross-origin, and there are potentially thousands of them, so
@@ -57,7 +57,7 @@ var SHELL = [
   'js/views/spot.js',
   'js/views/jobs.js',
   'js/views/me.js',
-  'js/views/soon.js',
+  'js/views/give.js',
   'js/main.js',
   'icons/icon-192.png',
   'icons/icon-512.png',

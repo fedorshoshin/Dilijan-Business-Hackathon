@@ -386,8 +386,6 @@ tap targets, no sideways scroll.
 
 **Known gaps, carried forward rather than forgotten:**
 
-- The **Give** tab is still a placeholder (Phase 6). Money moves now, but the
-  only donations are the seeded ones until people can give from the app.
 - **A reporter sets the price**, up to 100 000 AMD, and it is paid from the
   shared pot. The reporter's own confirmation is the check, but the reporter is
   the one pricing — so for now it rests on reporters and cleaners being different
@@ -546,15 +544,16 @@ requests by hand, so every value has to be checked on the server.
 31 API checks against the live server and 25 browser checks at 390×844, all
 with throwaway `[test]` data that is deleted afterwards.
 
-### Phase 6 — Donor ⬜ *(not started)*
+### Phase 6 — Donor ✅ *(built 2026-10-08)*
 
 | # | Task | Done when |
 | --- | --- | --- |
-| 6.1 | Donate to the general pot (preset amounts + custom) | Donation recorded, pot balance rises |
-| 6.2 | Donate to a specific report, from its detail screen | Earmarked donation shows on that report |
-| 6.3 | Simulated checkout — clearly labelled, no card fields implying a real charge | "No real payment is taken" stated on the screen |
-| 6.4 | **Donor dashboard: what was my money spent on?** | Each donation traces to named cleanups with photos and dates |
-| 6.5 | Unspent balance shown honestly ("2 000 AMD not yet allocated") | Donated total = allocated + unallocated, always |
+| 6.0 ✅ | **Money given beyond a spot's price is not stranded.** Once the spot is confirmed (and so fully paid from its earmark), the surplus counts as general-pot money. A gift is 100-1 000 000 AMD | 1 500 given to a 1 000 spot: 1 000 paid from it, the other 500 drawable by the pot ✔ |
+| 6.1 ✅ | Donate to the general pot (preset amounts + custom), on the Give tab | Donation recorded, pot balance rises by exactly the gift ✔ |
+| 6.2 ✅ | Donate to a specific report, from its detail screen ("Fund this cleanup", `#/give/<id>`) | The spot shows "Given for it"; no button, and a refusal, once it is paid ✔ |
+| 6.3 ✅ | Simulated checkout — clearly labelled, no card fields implying a real charge | "Pilot: no real payment is taken" above the Give button ✔ |
+| 6.4 ✅ | **Donor dashboard: what was my money spent on?** (`#/give/mine`) | Each gift lists the cleanups it paid, with before/after photos, date, cleaner and rating ✔ |
+| 6.5 ✅ | Unspent balance shown honestly ("2 000 AMD not yet spent") | Given = spent + not yet spent, per gift and in total, both sums of the same alloc rows ✔ |
 
 ### Phase 7 — Ship quality ⬜ *(not started)*
 
@@ -596,7 +595,7 @@ another person's board:
    → *works end to end since Phase 5; not yet on a real phone (7.2).*
 3. **Donor** signs in → gives to the general pot and to one specific cleanup →
    opens their dashboard → sees exactly which cleanups their money paid for.
-   → *not started; Phase 6. The server endpoints and the ledger already exist.*
+   → *works end to end since Phase 6; not yet on a real phone (7.2).*
 
 And two checks that only a pilot needs:
 
@@ -608,8 +607,8 @@ And two checks that only a pilot needs:
    pending, and appears for everyone else once signal returns.
    → *true for **photos** (3.1). A report itself is not queued yet (3.5.7).*
 
-None of the five is blocked on anything unknown: 1 and 2 need a real phone, 3
-needs Phase 6, 4 needs two phones in a room, and 5 needs the report write to use the
+None of the five is blocked on anything unknown: 1, 2 and 3 need a real phone,
+4 needs two phones in a room, and 5 needs the report write to use the
 outbox the photos already use.
 
 ---

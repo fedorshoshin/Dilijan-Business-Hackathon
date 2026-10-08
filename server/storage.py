@@ -187,8 +187,8 @@ async def delete(prefix: str, key: str) -> None:
 def sign_urls(data):
     """Turn every bucket key in a response into a signed URL beside it:
     `avatar_key` -> `avatar_url` on any user object however deeply nested (a
-    report's reporter, its claim's cleaner), and a report's `cover_key` ->
-    `cover_url`. Signing is local and cheap, so a list of forty reports costs a
+    report's reporter, its claim's cleaner), and a report photo's `cover_key`,
+    `before_key` or `after_key` -> `cover_url`, `before_url`, `after_url`. Signing is local and cheap, so a list of forty reports costs a
     hundred-odd HMACs rather than as many follow-up requests from the phone.
 
     Mutates and returns `data`, so a router can write `return sign_urls(row)`.
@@ -203,11 +203,12 @@ def sign_urls(data):
         if "avatar_key" in data:
             key = data["avatar_key"]
             data["avatar_url"] = signed_avatar_url(key) if key else None
-        if "cover_key" in data:
-            key = data.pop("cover_key")
-            data["cover_url"] = (
-                signed_read_url_sync(MEDIA_BUCKET, key) if key and configured() else None
-            )
+        for field in ("cover_key", "before_key", "after_key"):
+            if field in data:
+                key = data.pop(field)
+                data[field[:-4] + "_url"] = (
+                    signed_read_url_sync(MEDIA_BUCKET, key) if key and configured() else None
+                )
     return data
 
 

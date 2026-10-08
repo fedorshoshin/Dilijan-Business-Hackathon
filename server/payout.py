@@ -12,7 +12,8 @@ Three jobs, all here so the rules about money live in one file:
 Order of draw-down for one cleanup:
   1. donations earmarked for this report (target = the report id)
   2. the general pot, oldest donation first — which includes money earmarked
-     for a spot that was later withdrawn, so withdrawing never strands it
+     for a spot that was later withdrawn, or given beyond a confirmed spot's
+     price, so neither strands it
 
 If the pot cannot cover a payout we allocate what exists, and the rest is owed:
 the next donation pays it, oldest debt first (settle). We do not fail the
@@ -65,11 +66,14 @@ async def _remaining(con: asyncpg.Connection, report_id: UUID | None) -> list[di
         which, args = "d.target = $1", [str(report_id)]
     else:
         # A withdrawn spot leaves its earmarked donations naming a report that is
-        # gone. Donations are insert-only (invariant 3.5), so rather than rewrite
-        # the donor's record, the pot simply counts them as its own.
+        # gone, and a spot given more than its price leaves the surplus behind
+        # once it is confirmed (it drew its earmark first, so it is fully paid).
+        # Donations are insert-only (invariant 3.5), so rather than rewrite the
+        # donor's record, the pot simply counts that money as its own.
         which, args = (
             "(d.target = 'general' or not exists "
-            "(select 1 from reports r where r.id::text = d.target))"
+            "(select 1 from reports r where r.id::text = d.target "
+            "and r.status <> 'confirmed'))"
         ), []
     return [
         dict(r)

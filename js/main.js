@@ -217,7 +217,12 @@ Havak.shell = (function () {
       /* one tab, two screens: the board, and my own work behind /jobs/mine */
       view: function (screen, param) { return Havak.views.jobs(screen, param); }
     });
-    r.define('/give',   { view: Havak.views.soon('give'),   auth: true, role: 'donor' });
+    r.define('/give',   {
+      auth: true,
+      role: 'donor',
+      /* the gift form (for the pot, or a spot by id), and my impact behind /give/mine */
+      view: function (screen, param) { return Havak.views.give(screen, param); }
+    });
     r.define('/me',     { view: Havak.views.me,     auth: true });
 
     r.start({

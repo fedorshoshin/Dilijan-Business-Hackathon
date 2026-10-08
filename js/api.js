@@ -198,6 +198,8 @@ Havak.api = (function () {
       media: [],
       coverUrl: w.cover_url || null,
       mediaCount: w.media_count || 0,
+      /* donations given to this spot by name, everyone's together */
+      earmarked: w.earmarked || 0,
       claim: claimFromWire(w.claim, w.id),
       createdAt: ms(w.created_at),
       cleanedAt: ms(w.cleaned_at),
@@ -228,6 +230,7 @@ Havak.api = (function () {
       id: w.id,
       amount: w.amount,
       target: w.target,
+      targetTitle: w.target_title || null,
       allocated: w.allocated || 0,
       remaining: w.remaining == null ? w.amount : w.remaining,
       /* what this money actually paid for — the honest donor dashboard */
@@ -239,6 +242,8 @@ Havak.api = (function () {
           rating: b.rating,
           locLabel: b.loc_label,
           cleaner: b.cleaner ? { id: b.cleaner.id, name: b.cleaner.name } : null,
+          beforeUrl: b.before_url || null,
+          afterUrl: b.after_url || null,
           confirmedAt: ms(b.confirmed_at)
         };
       }),

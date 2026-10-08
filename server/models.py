@@ -113,7 +113,9 @@ class Confirm(BaseModel):
 
 
 class NewDonation(BaseModel):
-    amount: int = Field(gt=0)
+    # The charge is simulated, so the ceiling is only a guard against a typo
+    # (an extra zero or two) inflating the pot that every payout draws on.
+    amount: int = Field(ge=100, le=1_000_000)
     target: str = "general"  # 'general' or a report id
     client_id: UUID | None = None
 

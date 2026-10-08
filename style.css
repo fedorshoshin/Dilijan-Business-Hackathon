@@ -1239,29 +1239,6 @@ body.app.no-tabs #screen { padding-bottom: calc(var(--safe-b) + var(--s-4)); }
   text-align: center;
 }
 
-/* ---------- not-built-yet screens ---------- */
-.soon { padding: var(--s-6) 0; }
-.soon-badge {
-  display: inline-block;
-  font-size: var(--t-sm);
-  font-weight: 650;
-  color: var(--green-dk);
-  background: var(--green-sf);
-  border: 1px solid var(--line-green);
-  border-radius: 999px;
-  padding: var(--s-1) var(--s-3);
-}
-.soon-title { font-size: var(--t-xl); margin-top: var(--s-3); }
-.soon-lead { color: var(--muted); margin-top: var(--s-2); }
-.soon-list {
-  margin: var(--s-4) 0 0;
-  padding-left: var(--s-5);
-  display: grid;
-  gap: var(--s-2);
-  color: var(--ink);
-  max-width: 60ch;
-}
-
 /* ---------- empty states ---------- */
 .empty { text-align: center; padding: var(--s-6) var(--s-4); }
 .empty-title { font-weight: 650; }
@@ -1694,6 +1671,51 @@ form .panel:first-child { margin-top: var(--s-4); }
   margin-top: var(--s-1);
 }
 .earned-note { font-size: var(--t-sm); color: var(--muted); margin-top: var(--s-1); }
+
+/* ---------- giving (Phase 6) ---------- */
+.give-spot { font-size: var(--t-lg); margin-top: var(--s-1); }
+.give-switch {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: var(--s-2);
+  color: var(--green-dk);
+  font-weight: 650;
+}
+.give-pilot { margin-top: var(--s-4); margin-bottom: var(--s-4); }
+
+/* What one gift paid for: before and after, side by side, then the cleanup. */
+.bought-list { list-style: none; margin: var(--s-3) 0 0; padding: 0; display: grid; gap: var(--s-2); }
+.bought {
+  display: flex;
+  gap: var(--s-3);
+  align-items: center;
+  padding: var(--s-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  color: var(--ink);
+  text-decoration: none;
+  transition: background-color .2s ease;
+}
+.bought:hover { background: var(--bg); }
+.bought-pics { display: flex; gap: var(--s-1); flex: 0 0 auto; }
+.bought-pic {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--r-sm);
+  object-fit: cover;
+  background: var(--bg);
+}
+.bought-none {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--t-sm);
+  color: var(--muted);
+  border: 1px dashed var(--line);
+}
+.bought-text { min-width: 0; }
+.bought-title { font-weight: 650; overflow-wrap: anywhere; }
 
 /* ---------- closing the loop (Phase 5) ---------- */
 

@@ -13,7 +13,7 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter
 
-from .. import db, payout
+from .. import db, payout, storage
 from ..errors import NOT_AUTHORISED, NOT_FOUND, VALIDATION_FAILED, ApiError
 from ..models import NewDonation
 from ..security import CurrentUser
@@ -86,9 +86,10 @@ async def my_donations(user: dict = CurrentUser):
     This is the honest version of a donor dashboard: not a percentage, but the
     actual cleanups the money paid for.
     """
-    return await db.fetch(
+    return storage.sign_urls(await db.fetch(
         """
         select d.id, d.amount, d.target, d.created_at,
+               (select r.title from reports r where r.id::text = d.target) as target_title,
                coalesce(spent.total, 0) as allocated,
                d.amount - coalesce(spent.total, 0) as remaining,
                coalesce(bought.items, '[]'::jsonb) as bought
@@ -105,7 +106,15 @@ async def my_donations(user: dict = CurrentUser):
                          'amount', a.amount,
                          'rating', r.rating,
                          'confirmed_at', r.confirmed_at,
-                         'cleaner', jsonb_build_object('id', cu.id, 'name', cu.name)
+                         'cleaner', jsonb_build_object('id', cu.id, 'name', cu.name),
+                         'before_key', (select m.bucket_key from media m
+                                         where m.report_id = r.id and m.kind = 'before'
+                                           and m.mime like 'image/%'
+                                         order by m.created_at limit 1),
+                         'after_key', (select m.bucket_key from media m
+                                        where m.report_id = r.id and m.kind = 'after'
+                                          and m.mime like 'image/%'
+                                        order by m.created_at limit 1)
                      ) order by a.at desc) as items
                 from alloc a
                 join reports r on r.id = a.report_id
@@ -116,7 +125,7 @@ async def my_donations(user: dict = CurrentUser):
          order by d.created_at desc
         """,
         user["id"],
-    )
+    ))
 
 
 @router.get("/pot")

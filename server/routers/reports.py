@@ -44,7 +44,9 @@ FIELDS = """
     (select m.bucket_key from media m
       where m.report_id = r.id and m.kind = 'before' and m.mime like 'image/%'
       order by m.created_at limit 1) as cover_key,
-    (select count(*)::int from media m where m.report_id = r.id) as media_count
+    (select count(*)::int from media m where m.report_id = r.id) as media_count,
+    (select coalesce(sum(d.amount), 0)::int from donations d
+      where d.target = r.id::text) as earmarked
 """
 
 FROM = """

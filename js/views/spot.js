@@ -2,8 +2,8 @@
 
    The same screen for all three roles. What differs is the action offered at
    the bottom, which is decided by who you are and what state the report is in:
-   a cleaner takes it on (Havak.work), the reporter edits or withdraws it while
-   nobody has, and the reporter checks and rates the work once it is cleaned. */
+   a cleaner takes it on (Havak.work), a donor funds it, the reporter edits or
+   withdraws it while nobody has, and the reporter checks and rates the work once it is cleaned. */
 
 window.Havak = window.Havak || {};
 Havak.views = Havak.views || {};
@@ -385,6 +385,7 @@ Havak.views = Havak.views || {};
         fact('How bad', report.level + '/5 — ' + LEVEL_WORD[report.level]),
         fact('Time to clear', ui.minutes(report.estMinutes)),
         fact('Pays', ui.amd(report.payout)),
+        report.earmarked ? fact('Given for it', ui.amd(report.earmarked)) : null,
         fact('Status', (ui.STATUS[report.status] || {}).label || report.status)
       ]),
 
@@ -399,7 +400,15 @@ Havak.views = Havak.views || {};
          server rather than patching this screen's copy of the report. */
       Havak.work.actions(report, me, repaint),
 
-      report.status === 'open' && mine ? ownerButtons(report) : null
+      report.status === 'open' && mine ? ownerButtons(report) : null,
+
+      /* Task 6.2. Not once it is confirmed: it is paid, and the server would
+         refuse money earmarked for it. */
+      report.status !== 'confirmed' && auth.hasRole('donor', me)
+        ? el('div.work-actions', null, [
+            el('a.btn.btn-ghost.btn-block', { href: '#/give/' + report.id, text: 'Fund this cleanup' })
+          ])
+        : null
     ]);
 
     screen.appendChild(body);
