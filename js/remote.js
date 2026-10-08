@@ -258,6 +258,15 @@ Havak.remote = (function () {
         return me;
       });
     }
+    if (kind === 'reports') {
+      /* The reporter's edit; the server allows it only while the spot is open. */
+      return api.editReport(recordId, patch).then(function (report) {
+        report = absorbReport(report);
+        upsert(cache.reports, report);
+        invalidate('reports');
+        return report;
+      });
+    }
     return Promise.reject(new StoreError(
       'validation_failed',
       'A ' + kind + ' cannot be edited directly; use the matching action.'

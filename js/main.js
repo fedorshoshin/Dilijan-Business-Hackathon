@@ -140,7 +140,7 @@ Havak.shell = (function () {
       ev.preventDefault();
       deferred = ev;
       show([
-        el('p.install-text', { text: 'Add Havak to your home screen' }),
+        el('p.install-text', { text: 'Add Cleaner Armenia to your home screen' }),
         el('button.btn.btn-primary.btn-sm', {
           type: 'button',
           text: 'Install',
@@ -159,7 +159,7 @@ Havak.shell = (function () {
     if (isIOS && isSafari) {
       show([
         el('p.install-text', {
-          text: 'Install Havak: tap Share, then “Add to Home Screen”.'
+          text: 'Install Cleaner Armenia: tap Share, then “Add to Home Screen”.'
         })
       ]);
     }
@@ -205,6 +205,11 @@ Havak.shell = (function () {
           ? Havak.views.newReport(screen)
           : Havak.views.myReports(screen);
       }
+    });
+    r.define('/edit',   {
+      auth: true,
+      role: 'reporter',
+      view: function (screen, param) { return Havak.views.newReport(screen, param); }
     });
     r.define('/jobs',   {
       auth: true,

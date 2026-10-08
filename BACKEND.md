@@ -146,7 +146,9 @@ hold in the database.
 5. `donations` are insert-only. No client may edit or delete one after the fact.
 6. A user may only edit **their own** `users` row, and may never edit `roles` of
    another user.
-7. `payout` is fixed when the report is created and never edited afterwards.
+7. `payout` is set by the reporter (500-100 000 AMD). The reporter may edit it,
+   like every other field of their report, only while the report is `open`;
+   once a cleaner claims it, it is fixed.
 8. `lat`/`lng` are the truth for a report's position; `loc_x`/`loc_y` are a
    derived display convenience. If they ever disagree, lat/lng wins.
 

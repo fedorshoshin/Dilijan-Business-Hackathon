@@ -78,7 +78,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Havak API",
+    title="Cleaner Armenia API",
     version="1.0",
     summary="Reporting, cleaning and funding polluted spots around Dilijan.",
     lifespan=lifespan,

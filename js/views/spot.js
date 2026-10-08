@@ -2,8 +2,8 @@
 
    The same screen for all three roles. What differs is the action offered at
    the bottom, which is decided by who you are and what state the report is in:
-   a cleaner takes it on (Havak.work), the reporter withdraws it while nobody
-   has, and the reporter checks and rates the work once it is cleaned. */
+   a cleaner takes it on (Havak.work), the reporter edits or withdraws it while
+   nobody has, and the reporter checks and rates the work once it is cleaned. */
 
 window.Havak = window.Havak || {};
 Havak.views = Havak.views || {};
@@ -283,9 +283,13 @@ Havak.views = Havak.views || {};
     return line;
   }
 
-  /* The reporter may take a spot back only while nobody is working on it —
-     the server's rule; this decides only whether to show the button. */
-  function withdrawButton(report) {
+  /* The reporter may change or take back a spot only while nobody is working
+     on it — the server's rule; this decides only whether to show the buttons. */
+  function ownerButtons(report) {
+    var change = el('a.btn.btn-primary.btn-block', {
+      href: '#/edit/' + report.id,
+      text: 'Edit this report'
+    });
     var node = el('button.btn.btn-ghost.btn-block', {
       type: 'button',
       text: 'Withdraw this report',
@@ -305,7 +309,7 @@ Havak.views = Havak.views || {};
         });
       }
     });
-    return el('div.work-actions', null, [node]);
+    return el('div.work-actions', null, [change, node]);
   }
 
   function paint(screen, report, reporter, cleaner, me) {
@@ -395,7 +399,7 @@ Havak.views = Havak.views || {};
          server rather than patching this screen's copy of the report. */
       Havak.work.actions(report, me, repaint),
 
-      report.status === 'open' && mine ? withdrawButton(report) : null
+      report.status === 'open' && mine ? ownerButtons(report) : null
     ]);
 
     screen.appendChild(body);

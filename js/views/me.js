@@ -216,8 +216,8 @@ Havak.views = Havak.views || {};
          button against a shared database would destroy other people's reports,
          and no single phone should be able to do that. */
       el('p.notice.notice-plain', {
-        text: 'Your reports and donations are saved on the Havak server, so they ' +
-              'follow you to any phone you sign in on. Other people using Havak ' +
+        text: 'Your reports and donations are saved on the Cleaner Armenia server, so they ' +
+              'follow you to any phone you sign in on. Other people using Cleaner Armenia ' +
               'can see your name and what you report.'
       })
     ]);

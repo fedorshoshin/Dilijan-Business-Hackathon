@@ -4,6 +4,7 @@
    │                 │  ▲                 │
    │                 │  └──confirm 1-2────┘  sent back to the same cleaner
    │                 └──release──▶ open
+   ├──edit──▶ open (the reporter changes anything, price included)
    └──withdraw──▶ (gone)
 
 Each transition is its own endpoint rather than a PATCH on `status`, because each
@@ -17,7 +18,7 @@ from fastapi import APIRouter, Query
 
 from .. import db, payout, storage
 from ..errors import ALREADY_CLAIMED, NOT_AUTHORISED, NOT_FOUND, VALIDATION_FAILED, ApiError
-from ..models import Confirm, NewReport
+from ..models import Confirm, NewReport, ReportPatch
 from ..security import CurrentUser
 
 router = APIRouter(tags=["reports"])
@@ -122,12 +123,46 @@ async def create_report(body: NewReport, user: dict = CurrentUser):
         body.level,
         body.hazardous,
         body.est_minutes,
-        # Priced here, from the two inputs, never taken from the request: the
-        # app's own code is public, so anything it sends can be hand-written.
-        payout.price(body.est_minutes, body.hazardous),
+        # The reporter's own price, bounded in models.py. Older copies of the
+        # app send none and get the suggested one.
+        body.payout if body.payout is not None else payout.price(body.est_minutes, body.hazardous),
         body.client_id,
     )
     return storage.sign_urls(await _load(row["id"]))
+
+
+@router.patch("/reports/{report_id}")
+async def edit_report(report_id: UUID, body: ReportPatch, user: dict = CurrentUser):
+    """Change a report — only your own, and only before anyone starts work.
+
+    The same window as withdrawing: once a cleaner has claimed the spot, they
+    took it on for the place, the job and the price they saw, so none of those
+    may move under them. Photos have their own endpoints (routers/media.py).
+    """
+    # Absent and null both mean unchanged: every column here is NOT NULL.
+    changes = {k: v for k, v in body.model_dump(exclude_unset=True).items() if v is not None}
+    for key in ("title", "description", "loc_label"):
+        if key in changes:
+            changes[key] = changes[key].strip()
+
+    async with db.transaction() as con:
+        report = await con.fetchrow(
+            "select reporter_id, status from reports where id = $1 for update", report_id
+        )
+        if not report:
+            raise ApiError(NOT_FOUND, "That spot no longer exists.")
+        if report["reporter_id"] != user["id"]:
+            raise ApiError(NOT_AUTHORISED, "You can only edit your own report.")
+        if report["status"] != "open":
+            raise ApiError(VALIDATION_FAILED, "Someone is already working on this spot.")
+        if changes:
+            # Column names come from ReportPatch's own fields, never the request.
+            sets = ", ".join(f"{key} = ${i}" for i, key in enumerate(changes, start=2))
+            await con.execute(
+                f"update reports set {sets} where id = $1", report_id, *changes.values()
+            )
+
+    return storage.sign_urls(await _load(report_id))
 
 
 @router.delete("/reports/{report_id}")

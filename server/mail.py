@@ -48,7 +48,7 @@ SMTP_PASSWORD = "".join(os.getenv("SMTP_PASSWORD", "").split())
 
 # Shown as the sender. Many relays insist this match an address or domain you
 # have proven you own, and quietly reject everything otherwise.
-MAIL_FROM = os.getenv("MAIL_FROM", "Havak <no-reply@havak.am>")
+MAIL_FROM = os.getenv("MAIL_FROM", "Cleaner Armenia <no-reply@havak.am>")
 
 # Where the links point: the published PWA, not this API. The API serves JSON and
 # has no business rendering pages, and a link into the app means the click lands
@@ -158,7 +158,7 @@ async def send_verify(to: str, name: str, token: str) -> bool:
     first = (name or "").strip().split(" ")[0] or "there"
     return await send(
         to,
-        "Confirm your Havak email",
+        "Confirm your Cleaner Armenia email",
         f"""Hi {first},
 
 Confirm this address so we know we can reach you about your reports:
@@ -166,12 +166,12 @@ Confirm this address so we know we can reach you about your reports:
 {link('verify', token)}
 
 The link works once and expires in {VERIFY_HOURS} hours. If it has expired, open
-Havak and tap "Resend" on the banner at the top of your profile.
+Cleaner Armenia and tap "Resend" on the banner at the top of your profile.
 
-If you did not create a Havak account, someone typed this address by mistake —
+If you did not create a Cleaner Armenia account, someone typed this address by mistake —
 you can ignore this and nothing will happen.
 
-Havak · Հավաք · Dilijan
+Cleaner Armenia · Dilijan
 """,
     )
 
@@ -181,7 +181,7 @@ async def send_reset(to: str, name: str, token: str) -> bool:
     plural = "hour" if RESET_HOURS == 1 else f"{RESET_HOURS} hours"
     return await send(
         to,
-        "Reset your Havak password",
+        "Reset your Cleaner Armenia password",
         f"""Hi {first},
 
 Someone asked to reset the password for this address. If it was you, set a new
@@ -195,6 +195,6 @@ else, so anyone who should not be in your account will be locked out.
 If this was not you, ignore this email — your password has not changed and
 nobody can get in without this link.
 
-Havak · Հավաք · Dilijan
+Cleaner Armenia · Dilijan
 """,
     )

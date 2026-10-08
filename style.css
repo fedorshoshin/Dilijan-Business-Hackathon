@@ -1421,7 +1421,35 @@ body.app.no-tabs .toast { bottom: calc(var(--safe-b) + var(--s-5)); }
   font-variant-numeric: tabular-nums;
   margin-top: var(--s-1);
 }
+.payout-head { display: block; }
+.payout-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: var(--s-2);
+  margin-top: var(--s-1);
+}
+.payout-input {
+  width: 8ch;
+  min-height: 52px;
+  padding: var(--s-1) var(--s-2);
+  font: inherit;
+  font-size: var(--t-2xl);
+  line-height: 1.25;
+  font-weight: 650;
+  text-align: center;
+  color: var(--green-dk);
+  font-variant-numeric: tabular-nums;
+  background: var(--surface);
+  border: 1px solid var(--line-green);
+  border-radius: var(--r-sm);
+  -moz-appearance: textfield;
+}
+.payout-input::-webkit-inner-spin-button,
+.payout-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.payout-unit { font-size: var(--t-lg); font-weight: 650; color: var(--green-dk); }
 .payout-parts { font-size: var(--t-sm); color: var(--green-dk); margin-top: var(--s-2); }
+.payout .btn { margin-top: var(--s-3); }
 .payout-note { font-size: var(--t-sm); color: var(--muted); margin-top: var(--s-2); }
 
 /* ---------- one report ---------- */

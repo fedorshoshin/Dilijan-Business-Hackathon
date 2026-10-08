@@ -12,8 +12,8 @@ Havak.views = Havak.views || {};
   function brand(tagline) {
     return Havak.ui.el('div.auth-brand', null, [
       el('span.brand-mark', { 'aria-hidden': 'true' }),
-      el('h1.auth-title', { text: 'Havak' }),
-      el('p.auth-am', { text: 'Հավաք · Դիլիջան' }),
+      el('h1.auth-title', { text: 'Cleaner Armenia' }),
+      el('p.auth-am', { text: 'Դիլիջան' }),
       el('p.auth-lead', { text: tagline })
     ]);
   }
@@ -109,7 +109,7 @@ Havak.views = Havak.views || {};
       wrap.appendChild(el('div', null, [
         brand('Check your inbox.'),
         el('p.notice', {
-          text: 'If ' + address + ' has a Havak account, a link to set a new ' +
+          text: 'If ' + address + ' has a Cleaner Armenia account, a link to set a new ' +
                 'password is on its way. It works once and expires in an hour.'
         }),
         el('p.notice.notice-plain', {
@@ -253,7 +253,7 @@ Havak.views = Havak.views || {};
       if (result.ok) {
         done('Email confirmed.',
              'Thank you — we know we can reach you now. You can close this and ' +
-             'carry on using Havak.');
+             'carry on using Cleaner Armenia.');
       } else {
         done('That link did not work.', result.message, 'bad');
       }
@@ -320,7 +320,7 @@ Havak.views = Havak.views || {};
       el('button.btn.btn-primary.btn-block', { type: 'submit', text: 'Create account' }),
       el('p.notice.notice-plain', {
         text: 'Your password is hashed on our server and never stored on this ' +
-              'phone. Your name and reports are visible to other Havak users.'
+              'phone. Your name and reports are visible to other Cleaner Armenia users.'
       })
     ]);
 

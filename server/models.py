@@ -10,6 +10,11 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 
 ROLES = {"reporter", "cleaner", "donor"}
 
+# What a reporter may ask for one cleanup, in AMD. The floor keeps a job worth
+# turning up for; the ceiling stops one typo emptying the whole donation pot.
+MIN_PAYOUT = 500
+MAX_PAYOUT = 100_000
+
 
 class SignUp(BaseModel):
     name: str = Field(min_length=1, max_length=80)
@@ -81,10 +86,26 @@ class NewReport(BaseModel):
     # 8 hours: beyond that it is not one person's afternoon but a council job,
     # and an estimate is the one number a reporter can inflate to raise a payout.
     est_minutes: int = Field(ge=1, le=8 * 60)
-    # No `payout`: the server prices every spot itself (payout.price). Older
-    # copies of the app still send one; pydantic drops unknown fields, so it is
-    # ignored rather than refused.
+    # The reporter sets the price. Optional only for older copies of the app,
+    # which never sent one: those get the suggested price (payout.price).
+    payout: int | None = Field(default=None, ge=MIN_PAYOUT, le=MAX_PAYOUT)
     client_id: UUID | None = None
+
+
+class ReportPatch(BaseModel):
+    """The reporter's edit. Every field optional: absent means unchanged."""
+
+    title: str | None = Field(default=None, min_length=3, max_length=120)
+    description: str | None = Field(default=None, min_length=1, max_length=2000)
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lng: float | None = Field(default=None, ge=-180, le=180)
+    loc_x: float | None = Field(default=None, ge=0, le=100)
+    loc_y: float | None = Field(default=None, ge=0, le=100)
+    loc_label: str | None = Field(default=None, min_length=1, max_length=160)
+    level: int | None = Field(default=None, ge=1, le=5)
+    hazardous: bool | None = None
+    est_minutes: int | None = Field(default=None, ge=1, le=8 * 60)
+    payout: int | None = Field(default=None, ge=MIN_PAYOUT, le=MAX_PAYOUT)
 
 
 class Confirm(BaseModel):

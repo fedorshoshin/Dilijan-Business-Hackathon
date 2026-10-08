@@ -388,9 +388,9 @@ tap targets, no sideways scroll.
 
 - The **Give** tab is still a placeholder (Phase 6). Money moves now, but the
   only donations are the seeded ones until people can give from the app.
-- **A reporter could still inflate a spot's estimate** (up to 8 h) to raise its
-  payout. The reporter's own confirmation is the check, but the reporter is the
-  one inflating — so for now it rests on reporters and cleaners being different
+- **A reporter sets the price**, up to 100 000 AMD, and it is paid from the
+  shared pot. The reporter's own confirmation is the check, but the reporter is
+  the one pricing — so for now it rests on reporters and cleaners being different
   people, which the server enforces.
 - **Nothing has been run on a real phone yet** (task 7.2). Specifically waiting:
   the camera opening, iOS video playback, and a 50 MB video surviving a relaunch.
@@ -538,6 +538,8 @@ requests by hand, so every value has to be checked on the server.
 | 5.0f ✅ | **Withdraw is one atomic step**: row locked, then claims, media and report deleted in one transaction. Also fixed: a spot a cleaner had given back used to fail to delete (its released claim blocked it) | Claim and withdraw fired together, 4 times: exactly one wins each time, no 500 ✔ |
 | 5.1 ✅ | Reporter sees their spot has been cleaned | Count badge on the **Report** tab (where those spots are listed, so not the Me tab) ✔; "Needs you" cards first on the list ✔ |
 | 5.2 ✅ | Confirm screen: before/after side by side, **rate cleanliness 1–5** | Rating stored and shown ✔; the button says what the rating will do before it is pressed ✔ |
+| 5.0g ✅ | **The reporter sets the price**, 500-100 000 AMD; the formula is now the form's suggestion. *Replaces 5.0a.* | Server stores the reporter's number and refuses one outside the bounds |
+| 5.0h ✅ | **The reporter can edit their report** (`PATCH /reports/{id}`, the Edit screen at `#/edit/{id}`): place, title, description, photos, level, time, hazard, price, until a cleaner claims it | Another user's edit is refused; an edit after a claim is refused |
 | 5.3 ✅ | Confirmation triggers payout allocation (7.2) | `alloc` rows written, cleaner's earnings rise by the payout ✔. **Added:** if the pot is short, the rest is owed and the next donation pays it automatically, oldest debt first ✔; the cleaner sees what is still owed ✔ |
 | 5.4 ✅ | Dispute path: rating 1–2 → not paid | *Changed from the plan* ("`cleaned` + `disputed`, a human decides"), because there is no such human or screen in the pilot and the money would wait forever. Now: **sent back to the same cleaner** (`claimed` + `disputed`, rating kept), who finishes and marks it cleaned again, or gives it back ✔. Shown to both ✔ |
 

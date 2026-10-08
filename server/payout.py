@@ -5,7 +5,7 @@ a cleaner receives is traced to the donation it came from. BACKEND.md §4.
 
 Three jobs, all here so the rules about money live in one file:
 
-  price()           what a spot pays — the server's number, never the phone's
+  price()           the suggested price for a spot; the reporter sets the real one
   confirm_and_pay() the reporter is satisfied: pay the cleaner
   settle()          pay what earlier cleanups are still owed, after new money
 
@@ -29,9 +29,9 @@ from uuid import UUID, uuid4
 
 import asyncpg
 
-# The same formula as js/money.js, which shows it to people before they commit.
-# The phone's copy is for explaining the number; this one decides it. If the two
-# ever differ, the form quotes a price the server will not store — change both.
+# The same formula as js/money.js, which offers it on the form as a suggestion.
+# The reporter sets the actual price; this one is only used for older copies of
+# the app that send none. Change both together.
 BASE = 1000          # AMD, for turning up at all
 PER_MINUTE = 40      # AMD per estimated minute
 ROUND_TO = 100

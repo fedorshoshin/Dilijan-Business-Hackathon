@@ -218,8 +218,7 @@ Havak.api = (function () {
       level: rec.level,
       hazardous: !!rec.hazardous,
       est_minutes: rec.estMinutes,
-      /* No payout: the server prices every spot itself from the two fields
-         above. The form's figure is a preview of the same formula. */
+      payout: rec.payout,
       client_id: rec.clientId || uuid()
     };
   }
@@ -434,6 +433,12 @@ Havak.api = (function () {
     },
     createReport: function (rec) {
       return request('POST', '/reports', { body: reportToWire(rec) }).then(reportFromWire);
+    },
+    editReport: function (reportId, rec) {
+      var body = reportToWire(rec);
+      delete body.client_id;
+      return request('PATCH', '/reports/' + encodeURIComponent(reportId), { body: body })
+        .then(reportFromWire);
     },
     deleteReport: function (reportId) {
       return request('DELETE', '/reports/' + encodeURIComponent(reportId)).then(function () { return true; });
