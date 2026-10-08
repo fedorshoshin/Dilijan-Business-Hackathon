@@ -555,16 +555,16 @@ with throwaway `[test]` data that is deleted afterwards.
 | 6.4 ✅ | **Donor dashboard: what was my money spent on?** (`#/give/mine`) | Each gift lists the cleanups it paid, with before/after photos, date, cleaner and rating ✔ |
 | 6.5 ✅ | Unspent balance shown honestly ("2 000 AMD not yet spent") | Given = spent + not yet spent, per gift and in total, both sums of the same alloc rows ✔ |
 
-### Phase 7 — Ship quality ⬜ *(not started)*
+### Phase 7 — Ship quality *(in progress since 2026-10-08)*
 
 | # | Task | Done when |
 | --- | --- | --- |
-| 7.1 | Landing page reworked: three roles + install-the-app call to action | A stranger installs it in 15 seconds |
-| 7.2 | **Real-device pass** — iPhone Safari and Android Chrome, installed | Every flow completes on a real phone, not just a simulator |
-| 7.3 | Empty states for every list | No screen ever shows a blank void |
-| 7.4 | Demo reset restoring the seed | One button, with a confirm |
-| 7.5 | Full E2E walkthrough of all three roles, written down | Each of the three flows completes start to finish |
-| 7.6 | Accessibility: contrast, labels, focus order, reduced motion | Keyboard and screen-reader run through each flow works |
+| 7.1 ✅ | Landing page reworked: three roles + install-the-app call to action. The hackathon demo moved to `demo.html`, linked from the footer | Live numbers from a public `GET /stats` (counts and sums only), nothing invented; iPhone and Android install steps; no sideways scroll at 390 px ✔ |
+| 7.2 ⬜ | **Real-device pass** — iPhone Safari and Android Chrome, installed | Every flow completes on a real phone, not just a simulator. *Needs people with phones: follow `WALKTHROUGH.md`* |
+| 7.3 ✅ | Empty states for every list | Every list forced empty shows a message and a way forward; offline screens say "Cannot reach the server" with Try again; the jobs board offline keeps the last list and says so ✔ |
+| 7.4 ⬜ | Demo reset restoring the seed | *On hold: the live server has real accounts now, and a reset would delete their reports. Decide first whether it is still wanted.* |
+| 7.5 ✅ | Full E2E walkthrough of all three roles, written down (`WALKTHROUGH.md`) | Run through the real interface on three separate sessions: report with photo and own price → fund it → claim → after photo → confirm 5/5 → cleaner paid → donor sees it with photos ✔ |
+| 7.6 ✅ | Accessibility: contrast, labels, focus order, reduced motion | axe-core: zero violations on all 13 screens; every tap target ≥ 44 px; heading order fixed; toasts announced to screen readers; focus ring raised to 6:1 contrast; reduced motion already honoured ✔ |
 
 ### Phase 8 — Store build *(parked: not needed for this milestone)*
 

@@ -143,6 +143,20 @@ async def pot(_: dict = CurrentUser):
     return row
 
 
+@router.get("/stats")
+async def public_stats():
+    """The landing page's numbers, for visitors who are not signed in. Counts
+    and sums only — nothing here names a person or a place."""
+    return await db.fetchrow(
+        """
+        select (select count(*) from reports where status = 'confirmed')::int as cleaned,
+               (select count(*) from reports where status <> 'confirmed')::int as waiting,
+               (select coalesce(sum(amount), 0) from alloc)::int as paid,
+               (select count(*) from users)::int as people
+        """
+    )
+
+
 @router.get("/reports/{report_id}/allocations")
 async def report_allocations(report_id: UUID, _: dict = CurrentUser):
     """What this cleanup was paid, and out of which donations."""

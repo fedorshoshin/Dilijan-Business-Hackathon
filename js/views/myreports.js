@@ -34,7 +34,7 @@ Havak.views = Havak.views || {};
           report.hazardous ? el('span.tag.tag-hazard', { text: 'Hazardous' }) : null,
           needsMe ? el('span.tag.tag-you', { text: 'Needs you' }) : null
         ]),
-        el('h3.rcard-title', { text: report.title }),
+        el('h2.rcard-title', { text: report.title }),
         el('p.rcard-where', { text: report.loc.label }),
         el('p.rcard-meta', { text: NEXT[report.status] + ' · ' + ui.ago(report.createdAt) }),
         report.status === 'confirmed' && report.rating

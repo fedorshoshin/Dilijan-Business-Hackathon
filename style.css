@@ -45,7 +45,7 @@
   --line-blue:  #C3D6E4;
   --blue-ink:   #274F6B;
 
-  --focus: #7FB8A0;
+  --focus: #2D5F82;   /* the blue: 6:1 on every light surface, and distinct from the green buttons it rings */
 
   --r-sm: 8px;
   --r-md: 12px;
@@ -1787,3 +1787,43 @@ form .panel:first-child { margin-top: var(--s-4); }
 }
 
 .next-paid { margin-top: var(--s-1); color: var(--green-dk); }
+
+/* ---------- landing page (index.html) ---------- */
+.land-cta { margin-top: var(--s-2); }
+.land-small { font-size: var(--t-sm); color: var(--muted); margin-top: var(--s-2); }
+.land-section { padding-top: var(--s-6); }
+.land-section:last-child { padding-bottom: var(--s-6); }
+
+.roles { list-style: none; margin: var(--s-4) 0 0; padding: 0; display: grid; gap: var(--s-3); }
+.role {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: var(--s-4);
+}
+.role-icon { width: 32px; height: 32px; fill: var(--green); }
+.role h3 { font-size: var(--t-lg); margin-top: var(--s-2); }
+.role p { color: var(--muted); margin-top: var(--s-1); max-width: 60ch; }
+
+.steps {
+  margin: var(--s-4) 0 0;
+  padding-left: var(--s-5);
+  display: grid;
+  gap: var(--s-3);
+  max-width: 66ch;
+}
+.steps li::marker { color: var(--green); font-weight: 650; }
+
+.install-ways { display: grid; gap: var(--s-3); margin: var(--s-4) 0; }
+.install-ways .panel { margin: 0; }
+.install-ways h3 { font-size: var(--t-lg); }
+.install-steps { margin: var(--s-2) 0 0; padding-left: var(--s-5); display: grid; gap: var(--s-2); }
+
+.foot.wrap { padding-left: var(--s-4); padding-right: var(--s-4); }
+.foot a { color: var(--green-dk); }
+.foot p a { display: inline-flex; align-items: center; min-height: 44px; }
+
+@media (min-width: 640px) {
+  .roles { grid-template-columns: repeat(3, 1fr); }
+  .install-ways { grid-template-columns: 1fr 1fr; }
+}

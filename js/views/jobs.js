@@ -101,7 +101,7 @@ Havak.views = Havak.views || {};
         ui.statusTag(report.status),
         report.hazardous ? el('span.tag.tag-hazard', { text: 'Hazardous' }) : null
       ]),
-      el('h3.rcard-title', { text: report.title }),
+      el('h2.rcard-title', { text: report.title }),
       el('p.rcard-where', { text: report.loc.label }),
       el('p.rcard-meta', { text: bits.join(' · ') }),
       offer ? null : el('p.job-pay', { text: ui.amd(report.payout) })
@@ -307,7 +307,13 @@ Havak.views = Havak.views || {};
        On a first visit there is nothing cached and refresh() has just been to
        the server, so a second trip would be pure waste. */
     var cached = store.isLoaded('reports');
-    return refresh().then(function () { if (cached) recheck(); });
+    return refresh().then(function () {
+      if (!cached) return;
+      /* No signal: keep the board on screen, but say it may be out of date. */
+      recheck().catch(function () {
+        if (screen.isConnected) ui.toast('Offline — showing the last list you loaded.');
+      });
+    });
   }
 
   /* ---------- my work ---------- */
@@ -334,7 +340,7 @@ Havak.views = Havak.views || {};
           report.status === 'claimed' ? el('span.tag.tag-you', { text: 'To do' }) : null,
           sentBack ? el('span.tag.tag-open', { text: 'Sent back' }) : null
         ]),
-        el('h3.rcard-title', { text: report.title }),
+        el('h2.rcard-title', { text: report.title }),
         el('p.rcard-where', { text: report.loc.label }),
         el('p.rcard-meta', { text: meta.join(' · ') }),
         el('p.rcard-meta', {

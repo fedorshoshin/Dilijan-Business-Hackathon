@@ -29,7 +29,7 @@ Havak.views = Havak.views || {};
           ui.statusTag(report.status),
           report.hazardous ? el('span.tag.tag-hazard', { text: 'Hazardous' }) : null
         ]),
-        el('h3.rcard-title', { text: report.title }),
+        el('h2.rcard-title', { text: report.title }),
         el('p.rcard-where', { text: report.loc.label }),
         el('p.rcard-meta', { text: bits.join(' · ') + ' · ' + ui.ago(report.createdAt) })
       ])

@@ -208,7 +208,7 @@ Havak.views = Havak.views || {};
 
     return el('li.rcard', null, [
       el('div.rcard-top', null, [ el('span.tag.tag-done', { text: where }) ]),
-      el('h3.rcard-title', { text: ui.amd(d.amount) + ' · ' + day(d.createdAt) }),
+      el('h2.rcard-title', { text: ui.amd(d.amount) + ' · ' + day(d.createdAt) }),
       el('p.rcard-meta', { text: split }),
       d.bought.length
         ? el('ul.bought-list', { 'aria-label': 'Cleanups this paid for' }, d.bought.map(bought))
