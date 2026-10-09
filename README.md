@@ -17,6 +17,6 @@ files in that repo.
 | `app.html`, `js/`, `style.css` | the installable app (PWA) |
 | `sw.js`, `manifest.webmanifest`, `icons/` | offline and install; bump `CACHE` in `sw.js` on every change |
 | `vendor/leaflet/` | the map library |
-| `demo.html`, `app.js`, `pitch.html` | the original hackathon demo and pitch |
+| `hackathon/` | the original hackathon demo, pitch and pitch PDF |
 | `DESIGN.md` | what is being built, phase by phase |
 | `WALKTHROUGH.md` | the real-phone test checklist |

@@ -6,8 +6,8 @@
 feature actually working. Delivered as an installable, offline-capable mobile
 app, built so it can be wrapped for the app stores later without a rewrite.
 
-The hackathon build (`index.html` + `app.js`) is a one-page desktop-ish demo with
-a single hardcoded user. The MVP is a different shape: a phone app with real
+The hackathon build (now `hackathon/demo.html` + `hackathon/demo.js`) is a
+one-page desktop-ish demo with a single hardcoded user. The MVP is a different shape: a phone app with real
 accounts, three roles, three dashboards, and money that can be traced from donor
 to cleaned riverbank.
 
@@ -564,7 +564,7 @@ with throwaway `[test]` data that is deleted afterwards.
 
 | # | Task | Done when |
 | --- | --- | --- |
-| 7.1 ✅ | Landing page reworked: three roles + install-the-app call to action. The hackathon demo moved to `demo.html`, linked from the footer | Live numbers from a public `GET /stats` (counts and sums only), nothing invented; iPhone and Android install steps; no sideways scroll at 390 px ✔ |
+| 7.1 ✅ | Landing page reworked: three roles + install-the-app call to action. The hackathon demo moved to `hackathon/demo.html`, linked from the footer | Live numbers from a public `GET /stats` (counts and sums only), nothing invented; iPhone and Android install steps; no sideways scroll at 390 px ✔ |
 | 7.2 ⬜ | **Real-device pass** — iPhone Safari and Android Chrome, installed | Every flow completes on a real phone, not just a simulator. *Needs people with phones: follow `WALKTHROUGH.md`* |
 | 7.3 ✅ | Empty states for every list | Every list forced empty shows a message and a way forward; offline screens say "Cannot reach the server" with Try again; the jobs board offline keeps the last list and says so ✔ |
 | 7.4 ⬜ | Demo reset restoring the seed | *On hold: the live server has real accounts now, and a reset would delete their reports. Decide first whether it is still wanted.* |
