@@ -11,6 +11,11 @@ a single hardcoded user. The MVP is a different shape: a phone app with real
 accounts, three roles, three dashboards, and money that can be traced from donor
 to cleaned riverbank.
 
+**Two repos.** This one is the app (static files on GitHub Pages). The server —
+`BACKEND.md`, `server/` and `sql/`, all referred to below — lives in
+[cleaner-armenia-back](https://github.com/fedorshoshin/cleaner-armenia-back)
+(private).
+
 ---
 
 ## 1. What we are building
